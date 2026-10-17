@@ -1,0 +1,16 @@
+{
+  "short_name": "infoUNRN",
+  "name": "infoUNRN - Ingeniería en Computación",
+  "icons": [
+    {
+      "src": "/logo-unrn.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#9E1B32",
+  "theme_color": "#9E1B32",
+  "display": "standalone",
+  "orientation": "portrait"
+}
