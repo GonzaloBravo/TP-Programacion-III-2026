@@ -150,6 +150,6 @@ unrn-computacion-app/
 ---
 
 ## 👥 Autor y Contacto
-* **Desarrolladores:** Gonzalo Bravo. Maria de los Angeles Rodriguez, Lautaro Tummino
+* **Desarrolladores:** Gonzalo Bravo, Maria de los Angeles Rodriguez, Lautaro Tummino
 * **Carrera:** Ingeniería en Computación — UNRN Sede Andina
 * **Materia:** Programación III (2026)
