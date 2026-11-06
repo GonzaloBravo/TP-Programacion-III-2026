@@ -28,7 +28,7 @@ import { timeSimulator, type HoraSimulada } from './async/timeSimulator';
 import type { EstadoAcademicoUsuario, EstadoMateria, NovedadPost } from './types';
 
 export function App() {
-  // 1. Estado reactivo del navegador de pestañas (Estilo infoUNLP)
+  // 1. Estado reactivo del navegador de pestañas 
   const [activeTab, setActiveTab] = useState<TabId>('inicio');
 
   // 2. Estado de tema claro / oscuro
@@ -128,11 +128,11 @@ export function App() {
       const existe = prev.some(h => h.id === horario.id);
       let updated: HorarioCursada[];
       if (existe) {
+        // Desmarcar esta clase/comisión específica
         updated = prev.filter(h => h.id !== horario.id);
       } else {
-        // Si ya tiene otra comisión de la misma materia, reemplaza
-        const filtrado = prev.filter(h => h.codigoMateria !== horario.codigoMateria);
-        updated = [...filtrado, horario];
+        // Permitir selección múltiple de comisiones/días para la misma materia (ej: Teoría y Práctica)
+        updated = [...prev, horario];
       }
       localStorage.setItem('unrn_horarios_ids', JSON.stringify(updated.map(u => u.id)));
       return updated;
@@ -253,7 +253,7 @@ export function App() {
           )}
         </div>
 
-        {/* Barra de Navegación Inferior (infoUNLP style) */}
+        {/* Barra de Navegación Inferior */}
         <BottomNav
           activeTab={activeTab}
           onSelectTab={setActiveTab}

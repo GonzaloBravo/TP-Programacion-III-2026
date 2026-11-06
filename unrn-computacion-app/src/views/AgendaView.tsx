@@ -212,46 +212,57 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
       {vistaModo === 'comisiones' && (
         <div className="comisiones-selection-container">
           <p className="section-instructions">
-            Marcá o desmarcá las comisiones en las que cursás para armar tu cronograma personalizado:
+            Marcá o desmarcá las comisiones y días en los que cursás para armar tu cronograma personalizado (podés seleccionar múltiples opciones por materia):
           </p>
 
           <div className="comisiones-by-materia">
-            {Object.values(materiasAgrupadas).map(mat => (
-              <div key={mat.codigo} className="materia-comisiones-card">
-                <div className="card-materia-header">
-                  <div>
-                    <span className="guarani-code">{mat.codigo} • {mat.anio}° Año</span>
-                    <h4>{mat.nombre}</h4>
+            {Object.values(materiasAgrupadas).map(mat => {
+              const cantSeleccionadas = mat.comisiones.filter(c =>
+                horariosSeleccionados.some(h => h.id === c.id)
+              ).length;
+
+              return (
+                <div key={mat.codigo} className="materia-comisiones-card">
+                  <div className="card-materia-header">
+                    <div>
+                      <span className="guarani-code">{mat.codigo} • {mat.anio}° Año</span>
+                      <h4>{mat.nombre}</h4>
+                    </div>
+                    {cantSeleccionadas > 0 && (
+                      <span className="materia-selected-pill-badge">
+                        {cantSeleccionadas} {cantSeleccionadas === 1 ? 'seleccionada' : 'seleccionadas'}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="comisiones-buttons-grid">
+                    {mat.comisiones.map(com => {
+                      const estaSeleccionada = horariosSeleccionados.some(h => h.id === com.id);
+
+                      return (
+                        <button
+                          key={com.id}
+                          className={`comision-select-pill ${estaSeleccionada ? 'selected' : ''}`}
+                          onClick={() => onToggleComision(com)}
+                        >
+                          <div className="pill-check-indicator">
+                            {estaSeleccionada ? <Check size={14} /> : <BookPlus size={14} />}
+                          </div>
+                          <div className="pill-info-block">
+                            <span className="comision-id">
+                              Comisión {com.comision} ({com.diaSemana.toUpperCase()} {com.horaDesde}-{com.horaHasta})
+                            </span>
+                            <span className="comision-venue">
+                              {com.aula} • Docente: {com.docente}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-
-                <div className="comisiones-buttons-grid">
-                  {mat.comisiones.map(com => {
-                    const estaSeleccionada = horariosSeleccionados.some(h => h.id === com.id);
-
-                    return (
-                      <button
-                        key={com.id}
-                        className={`comision-select-pill ${estaSeleccionada ? 'selected' : ''}`}
-                        onClick={() => onToggleComision(com)}
-                      >
-                        <div className="pill-check-indicator">
-                          {estaSeleccionada ? <Check size={14} /> : <BookPlus size={14} />}
-                        </div>
-                        <div className="pill-info-block">
-                          <span className="comision-id">
-                            Comisión {com.comision} ({com.diaSemana.toUpperCase()} {com.horaDesde}-{com.horaHasta})
-                          </span>
-                          <span className="comision-venue">
-                            {com.aula} • Docente: {com.docente}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

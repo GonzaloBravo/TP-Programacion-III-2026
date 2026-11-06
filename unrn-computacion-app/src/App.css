@@ -1737,10 +1737,28 @@
   margin-bottom: 10px;
 }
 
+.card-materia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
 .card-materia-header h4 {
   font-size: 14px;
   margin-top: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
+}
+
+.materia-selected-pill-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--unrn-red-soft);
+  color: var(--unrn-red-primary);
+  border: 1px solid rgba(158, 27, 50, 0.2);
+  white-space: nowrap;
 }
 
 .comisiones-buttons-grid {

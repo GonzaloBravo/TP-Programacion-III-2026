@@ -3,7 +3,7 @@
 > **Universidad Nacional de Río Negro (UNRN) — Sede Andina, San Carlos de Bariloche**  
 > *Escuela de Producción, Tecnología y Medio Ambiente*
 
-Prototipo de aplicación web progresiva (**PWA**) inspirada en plataformas universitarias de autogestión académica (como *infoUNLP*), diseñada específicamente para los estudiantes y docentes de la carrera de **Ingeniería en Computación**.
+Prototipo de aplicación web progresiva (**PWA**) inspirada en plataformas universitarias de autogestión académica, diseñada específicamente para los estudiantes y docentes de la carrera de **Ingeniería en Computación**.
 
 ---
 
