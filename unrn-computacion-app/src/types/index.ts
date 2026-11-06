@@ -1,5 +1,7 @@
 export type EstadoMateria = 'aprobada' | 'regular' | 'cursando' | 'pendiente';
 
+export type RolUsuario = 'estudiante' | 'docente';
+
 export type CategoriaEvento = 'examen' | 'cursada' | 'inscripcion' | 'feriado' | 'institucional' | 'receso' | 'tramite';
 
 export type SedeEdificio = 

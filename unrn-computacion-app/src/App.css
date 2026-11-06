@@ -2346,3 +2346,147 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* ============================================================
+   Cartelera Virtual - Acceso y Validación Docente (PIN)
+   ============================================================ */
+.btn-docente-auth {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface);
+  color: var(--unrn-red-primary);
+  border: 1px solid var(--unrn-red-primary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-docente-auth:hover {
+  background: var(--unrn-red-soft);
+  transform: translateY(-1px);
+}
+
+.docente-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-exit-docente {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-exit-docente:hover {
+  color: var(--status-busy);
+  border-color: var(--status-busy);
+  background: var(--status-busy-soft);
+}
+
+.docente-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--status-active-soft);
+  color: var(--status-active);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.student-cartelera-notice {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header-icon-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lock-avatar-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--unrn-red-soft);
+  color: var(--unrn-red-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pin-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.role-locked-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--status-active-soft);
+  color: var(--text-primary);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.input-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.input-hint code {
+  background: var(--bg-subtle);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  color: var(--unrn-red-primary);
+  border: 1px solid var(--border-color);
+}
+
+.form-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--status-busy);
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 6px;
+}
+
+.input-error {
+  border-color: var(--status-busy) !important;
+}
