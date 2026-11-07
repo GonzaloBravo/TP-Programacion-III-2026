@@ -1,3 +1,4 @@
+/** Agrupa funciones para consultar materias, horarios y ocupacion de aulas. */
 import type { EstadoAcademicoUsuario } from '../types';
 import { Materia } from '../models/Materia';
 import { HorarioCursada } from '../models/HorarioCursada';

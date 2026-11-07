@@ -1,3 +1,4 @@
+/** Organiza los encuentros elegidos por dia y muestra posibles superposiciones. */
 import React, { useState } from 'react';
 import { CalendarDays, Clock, MapPin, User, AlertTriangle, Check, BookPlus } from 'lucide-react';
 import { HorarioCursada } from '../models/HorarioCursada';

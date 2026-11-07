@@ -1,3 +1,4 @@
+/** Muestra el formulario de acceso y entrega la sesion validada a la app. */
 import { useState, type FormEvent } from 'react';
 import { LogIn, AlertCircle, GraduationCap } from 'lucide-react';
 import { iniciarSesion, type ErrorApi, type SesionAutenticada } from '../services/authApi';
@@ -6,6 +7,7 @@ interface LoginViewProps {
   onLogin: (sesion: SesionAutenticada) => void;
 }
 
+/** Valida el formulario y entrega a la app la sesion recibida del backend. */
 export function LoginView({ onLogin }: LoginViewProps) {
   const [nombreUsuario, setNombreUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');

@@ -1,3 +1,4 @@
+/** Permite recorrer el plan de estudios y actualizar el estado de cada materia. */
 import React, { useState } from 'react';
 import { GraduationCap, BookOpen, CheckCircle, Clock, AlertTriangle, ChevronRight, Award, Info, X } from 'lucide-react';
 import { Materia } from '../models/Materia';

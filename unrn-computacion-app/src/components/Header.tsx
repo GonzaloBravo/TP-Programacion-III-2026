@@ -1,3 +1,4 @@
+/** Muestra la identidad de la app, la hora y los controles generales. */
 import React from 'react';
 import { Clock, Moon, Sun, Smartphone, Monitor, Sparkles } from 'lucide-react';
 import type { HoraSimulada } from '../async/timeSimulator';

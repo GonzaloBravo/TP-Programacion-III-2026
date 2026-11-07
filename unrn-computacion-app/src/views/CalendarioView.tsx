@@ -1,3 +1,4 @@
+/** Permite consultar y filtrar las fechas del calendario academico. */
 import React, { useState } from 'react';
 import { Calendar, Search, AlertCircle, FileText } from 'lucide-react';
 import { EventoCalendario } from '../models/EventoCalendario';

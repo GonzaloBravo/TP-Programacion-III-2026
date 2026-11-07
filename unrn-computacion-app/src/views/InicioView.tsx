@@ -1,3 +1,4 @@
+/** Resume el estado de la carrera y ofrece accesos rapidos a otras secciones. */
 import React from 'react';
 import { School, GraduationCap, Calendar, Bell, BotMessageSquare, ArrowRight, Clock, MapPin, Sparkles } from 'lucide-react';
 import type { TabId } from '../components/BottomNav';

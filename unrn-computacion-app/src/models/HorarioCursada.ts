@@ -1,3 +1,4 @@
+/** Define un encuentro de cursada y sus operaciones sobre horarios. */
 import type { HorarioCursadaRaw } from '../types';
 
 /**

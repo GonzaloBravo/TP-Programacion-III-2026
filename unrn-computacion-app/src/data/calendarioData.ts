@@ -1,3 +1,4 @@
+/** Reune las fechas y eventos academicos precargados en la aplicacion. */
 import type { EventoCalendarioRaw } from '../types';
 
 export const CALENDARIO_DATA: EventoCalendarioRaw[] = [

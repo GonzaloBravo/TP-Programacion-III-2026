@@ -1,3 +1,4 @@
+/** Proporciona los avisos iniciales que se muestran en la Cartelera. */
 import type { NovedadPost } from '../types';
 
 export const NOVEDADES_INICIALES: NovedadPost[] = [

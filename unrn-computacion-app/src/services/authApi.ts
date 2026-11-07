@@ -1,3 +1,4 @@
+/** Define los tipos de sesion y las llamadas de acceso al servidor Python. */
 export type RolAutenticado = 'alumno' | 'docente';
 
 export interface UsuarioAutenticado {
@@ -14,12 +15,14 @@ export interface SesionAutenticada {
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 export class ErrorApi extends Error {
+  /** Crea un error con un mensaje sencillo para mostrar en la interfaz. */
   constructor(message: string) {
     super(message);
     this.name = 'ErrorApi';
   }
 }
 
+/** Envia las credenciales y devuelve la sesion validada por el servidor. */
 export async function iniciarSesion(
   nombreUsuario: string,
   contrasena: string,
@@ -55,6 +58,7 @@ export async function iniciarSesion(
   return datos;
 }
 
+/** Informa al backend que el usuario quiere invalidar su token de sesion. */
 export async function cerrarSesion(token: string): Promise<void> {
   let respuesta: Response;
   try {
@@ -72,6 +76,7 @@ export async function cerrarSesion(token: string): Promise<void> {
   }
 }
 
+/** Comprueba que la respuesta del servidor tenga los datos de sesion esperados. */
 function esSesionAutenticada(datos: unknown): datos is SesionAutenticada {
   if (!datos || typeof datos !== 'object') return false;
   const sesion = datos as Partial<SesionAutenticada>;

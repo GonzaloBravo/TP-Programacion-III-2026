@@ -1,3 +1,4 @@
+/** Presenta los avisos y permite publicar a usuarios con rol docente. */
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, Heart, Pin, Plus, Check, X, ShieldCheck } from 'lucide-react';

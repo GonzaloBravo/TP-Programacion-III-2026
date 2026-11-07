@@ -1,3 +1,4 @@
+/** Define un aula y calcula su estado de ocupacion a partir de los horarios. */
 import type { AulaInfo } from '../types';
 import { HorarioCursada } from './HorarioCursada';
 

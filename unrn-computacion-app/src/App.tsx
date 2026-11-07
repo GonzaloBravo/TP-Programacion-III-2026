@@ -1,3 +1,4 @@
+/** Coordina las pantallas, los datos compartidos y la sesion del usuario. */
 import { useState, useEffect, useMemo } from 'react';
 import './App.css';
 import { Header } from './components/Header';
@@ -29,6 +30,7 @@ import { NOVEDADES_INICIALES } from './data/carteleraData';
 import { timeSimulator, type HoraSimulada } from './async/timeSimulator';
 import type { EstadoAcademicoUsuario, EstadoMateria, NovedadPost } from './types';
 
+/** Mantiene el estado general y muestra el acceso o la aplicacion autenticada. */
 export function App() {
   const [sesion, setSesion] = useState<SesionAutenticada | null>(null);
   // 1. Estado reactivo del navegador de pestañas 

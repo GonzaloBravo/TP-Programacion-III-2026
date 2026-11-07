@@ -1,3 +1,4 @@
+/** Contiene la informacion general y las materias precargadas de la carrera. */
 import type { MateriaRaw } from '../types';
 
 export const INFO_CARRERA = {

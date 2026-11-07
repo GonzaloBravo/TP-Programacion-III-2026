@@ -1,4 +1,4 @@
-"""Servidor HTTP local para el prototipo de Programacion III."""
+"""Atiende las solicitudes de login, progreso y agenda usando SQLite."""
 
 import hashlib
 import hmac
@@ -53,6 +53,8 @@ def verificar_contrasena(contrasena: str, hash_guardado: str) -> bool:
 
 
 class ManejadorAPI(BaseHTTPRequestHandler):
+    """Valida cada solicitud y devuelve respuestas JSON al frontend."""
+
     server_version = "UNRNBackend/1.0"
 
     def log_message(self, formato: str, *argumentos: object) -> None:
@@ -285,6 +287,7 @@ class ManejadorAPI(BaseHTTPRequestHandler):
 
 
 def iniciar_servidor() -> None:
+    """Inicia el servidor local y limpia las sesiones al detenerlo."""
     servidor = ThreadingHTTPServer((DIRECCION, PUERTO), ManejadorAPI)
     print(f"Backend local disponible en http://{DIRECCION}:{PUERTO}")
     print(f"Origen frontend permitido: {ORIGEN_FRONTEND}")

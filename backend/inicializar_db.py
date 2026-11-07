@@ -1,4 +1,4 @@
-"""Crea el esquema SQLite y las cuentas de demostracion del proyecto."""
+"""Prepara la base SQLite y crea las cuentas de demostracion que falten."""
 
 import hashlib
 import secrets
