@@ -10,6 +10,8 @@ import { AgendaView } from './views/AgendaView';
 import { CarteleraView } from './views/CarteleraView';
 import { CalendarioView } from './views/CalendarioView';
 import { ChatIAView } from './views/ChatIAView';
+import { LoginView } from './components/LoginView';
+import { cerrarSesion, type SesionAutenticada } from './services/authApi';
 
 // Models
 import { Materia } from './models/Materia';
@@ -28,6 +30,7 @@ import { timeSimulator, type HoraSimulada } from './async/timeSimulator';
 import type { EstadoAcademicoUsuario, EstadoMateria, NovedadPost } from './types';
 
 export function App() {
+  const [sesion, setSesion] = useState<SesionAutenticada | null>(null);
   // 1. Estado reactivo del navegador de pestañas 
   const [activeTab, setActiveTab] = useState<TabId>('inicio');
 
@@ -169,12 +172,28 @@ export function App() {
     });
   };
 
+  const handleLogout = async () => {
+    if (sesion) {
+      try {
+        await cerrarSesion(sesion.token);
+      } catch {
+        // Se limpia el token local aunque el servidor no esté disponible.
+      }
+    }
+    setSesion(null);
+    setActiveTab('inicio');
+  };
+
   // 10. Clases que se están dictando actualmente en toda la sede
   const clasesEnCursoAhora = useMemo(() => {
     return todosLosHorarios.filter(h =>
       h.estaEnCurso(horaInfo.dia, horaInfo.minutosDesdeMedianoche)
     );
   }, [todosLosHorarios, horaInfo]);
+
+  if (!sesion) {
+    return <LoginView onLogin={setSesion} />;
+  }
 
   return (
     <div className={`app-viewport ${isDeviceFrame ? '' : 'full-screen'}`}>
@@ -196,6 +215,18 @@ export function App() {
           toggleDeviceFrame={() => setIsDeviceFrame(!isDeviceFrame)}
           onOpenSimulador={() => setSimuladorAbierto(true)}
         />
+
+        <div className="authenticated-user-bar">
+          <span>
+            {sesion.usuario.nombre}
+            <span className="authenticated-user-role">
+              {sesion.usuario.rol === 'docente' ? 'Docente' : 'Alumno'}
+            </span>
+          </span>
+          <button className="session-logout-button" type="button" onClick={handleLogout}>
+            Cerrar sesión
+          </button>
+        </div>
 
         {/* Contenido Dinámico según la Pestaña Activa */}
         <div className="app-content-scroll">
@@ -241,6 +272,8 @@ export function App() {
               novedades={novedades}
               onAgregarNovedad={handleAgregarNovedad}
               onLikeNovedad={handleLikeNovedad}
+              rolUsuario={sesion.usuario.rol}
+              nombreUsuario={sesion.usuario.nombre}
             />
           )}
 
