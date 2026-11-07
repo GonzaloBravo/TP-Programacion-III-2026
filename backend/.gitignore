@@ -1,0 +1,16 @@
+# Base SQLite local y posibles archivos temporales de SQLite.
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/*-journal
+data/*-wal
+data/*-shm
+
+# Archivos generados por Python.
+__pycache__/
+*.py[cod]
+
+# Configuracion local con posibles secretos; se permiten plantillas de ejemplo.
+.env
+.env.*
+!.env.example
