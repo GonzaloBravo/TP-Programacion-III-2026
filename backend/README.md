@@ -1,66 +1,105 @@
-# Backend simple - SQLite
+# Backend Python + SQLite
 
-Esta etapa prepara la base local del prototipo. Usa `sqlite3`, incluida en la biblioteca estandar de Python. Todavia no incluye servidor HTTP ni autenticacion.
+## 1. ¿Qué hace este backend?
 
-## Inicializar
+El backend ofrece una API local para iniciar y cerrar sesión, guardar el progreso académico de cada alumno y conservar su agenda personalizada. El frontend React se comunica con él mediante solicitudes HTTP.
 
-Requiere Python 3.10 o posterior. Desde esta carpeta ejecutar:
+## 2. Requisitos
+
+- Python 3.10 o superior.
+- SQLite ya viene incluido en Python; no hace falta instalarlo por separado.
+- Para usar la aplicación completa, también se necesita Node.js y npm para ejecutar el frontend.
+
+En Windows, los comandos de esta guía utilizan el lanzador `py`.
+
+## 3. Primera ejecución
+
+1. Abrí una terminal, por ejemplo PowerShell.
+2. Desde la carpeta raíz del repositorio, entrá a `backend`:
+
+   ```powershell
+   cd backend
+   ```
+
+3. Creá la base local y las cuentas de demostración:
+
+   ```powershell
+   py inicializar_db.py
+   ```
+
+   Esto crea `data/unrn_computacion.db` si todavía no existe. Las contraseñas se guardan como hashes PBKDF2-HMAC con sal aleatoria. El inicializador conserva el progreso y la agenda que ya existan.
+
+4. Iniciá el servidor:
+
+   ```powershell
+   py servidor.py
+   ```
+
+El backend queda escuchando en `http://127.0.0.1:8000`. Dejá esta terminal abierta mientras usás la aplicación.
+
+## 4. Ejecuciones posteriores
+
+Una vez creada la base local, normalmente solo hace falta entrar a `backend` e iniciar el servidor:
 
 ```powershell
-py .\inicializar_db.py
+cd backend
+py servidor.py
 ```
 
-El script crea `data/unrn_computacion.db`, las tres tablas y las cuentas demo que falten. También actualiza las credenciales demo anteriores y renombra `alumna2` a `alumno2`, conservando sus identificadores y datos asociados. Se puede ejecutar nuevamente: no duplica usuarios, borra progreso o selecciones, ni restablece contraseñas que hayan sido cambiadas posteriormente. Las contraseñas se almacenan como hashes PBKDF2-HMAC-SHA256 con sal aleatoria.
+No vuelvas a inicializar la base en cada ejecución. El inicializador es repetible y no borra datos, pero se usa principalmente la primera vez o cuando se necesite preparar las cuentas demo.
 
-## Tablas
+## 5. Cómo utilizarlo con el frontend
 
-- `usuarios`: perfil, nombre de usuario unico, hash de contrasena y rol (`alumno` o `docente`).
-- `progreso_academico`: estado por usuario y codigo de materia. El codigo coincide con `MateriaRaw.codigoGuarani` del frontend.
-- `agenda_usuario`: encuentros seleccionados por usuario. `encuentro_id` conserva como texto el `HorarioCursadaRaw.id` del frontend; los horarios siguen precargados en React y no se duplican en SQLite en esta etapa.
-
-Las claves foraneas se habilitan con `PRAGMA foreign_keys = ON` en cada conexion abierta por `conectar()`.
-
-## Verificar tablas
-
-Desde esta carpeta:
+Mantené el backend abierto en una terminal. Abrí una segunda terminal desde la raíz del repositorio y ejecutá:
 
 ```powershell
-py -c "import sqlite3; c=sqlite3.connect('data/unrn_computacion.db'); c.execute('PRAGMA foreign_keys=ON'); print(c.execute(\"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name\").fetchall()); print(c.execute('SELECT nombre_usuario, rol, hash_contrasena FROM usuarios ORDER BY nombre_usuario').fetchall()); print(c.execute('PRAGMA foreign_key_check').fetchall()); c.close()"
+cd unrn-computacion-app
+npm.cmd ci
+npm.cmd run dev
 ```
 
-La salida de `foreign_key_check` debe ser una lista vacia. El archivo `.db` local esta excluido por `.gitignore`.
+`npm.cmd ci` instala las dependencias del frontend; normalmente alcanza con ejecutarlo la primera vez. Vite muestra la dirección local, habitualmente `http://localhost:5173`. Abrila en el navegador. El backend debe seguir disponible en `http://127.0.0.1:8000`.
 
-## Cuentas de demostracion
+Para detener los servicios, presioná **Ctrl+C** en cada terminal: una para React y otra para Python.
 
-Estas cuentas son solo para el prototipo local:
+## 6. Usuarios de prueba
 
-| Usuario | Contrasena de prueba | Rol |
+Estas cuentas se utilizan solo para la demostración académica:
+
+| Usuario | Contraseña | Rol |
 |---|---|---|
 | `alumno1` | `alumno1` | alumno |
 | `alumno2` | `alumno2` | alumno |
 | `docente` | `docente` | docente |
 
-No reutilizar estas credenciales fuera de la demostracion.
+## 7. ¿Qué información se guarda?
 
-## Servidor HTTP local
+- **`usuarios`** guarda el nombre, nombre de usuario, hash de contraseña y rol (`alumno` o `docente`). Nunca guarda la contraseña en texto plano.
+- **`progreso_academico`** guarda el estado de cada materia por alumno, por ejemplo aprobada, regular o cursando.
+- **`agenda_usuario`** guarda los identificadores de los encuentros seleccionados por cada usuario. Los horarios y las materias de referencia siguen definidos en el frontend.
 
-Desde esta carpeta, iniciar el servidor con:
+La base vive en `backend/data/unrn_computacion.db` y está excluida del control de versiones. El progreso y la agenda permanecen guardados aunque se cierre el servidor.
 
-```powershell
-py .\servidor.py
-```
+## 8. Información técnica
 
-El servidor escucha solamente en `127.0.0.1:8000`. Durante desarrollo permite el origen `http://localhost:5173`; se puede cambiar mediante `FRONTEND_ORIGIN`. El puerto puede cambiarse mediante `BACKEND_PORT`. No requiere dependencias externas.
+El servidor usa bibliotecas incluidas en Python (`http.server`, `sqlite3` y `json`); no requiere instalar dependencias de backend.
 
-### API
+| Método y ruta | Función |
+|---|---|
+| `POST /api/login` | Verifica las credenciales y devuelve un token de sesión y el perfil. |
+| `POST /api/logout` | Invalida la sesión actual. |
+| `GET /api/progreso` | Consulta el progreso del usuario autenticado. |
+| `PUT /api/progreso` | Guarda el estado de una materia del usuario autenticado. |
+| `GET /api/agenda` | Consulta los encuentros seleccionados por el usuario autenticado. |
+| `PUT /api/agenda` | Guarda la selección de encuentros de ese usuario. |
 
-- `POST /api/login`: recibe `{ "nombre_usuario": "alumno1", "contrasena": "..." }`; devuelve un token temporal y el perfil.
-- `POST /api/logout`: invalida la sesión del token enviado como `Authorization: Bearer <token>`.
-- `GET /api/progreso`: devuelve los estados académicos del usuario autenticado.
-- `PUT /api/progreso`: recibe `{ "codigo_materia": "B6000", "estado": "cursando" }` y crea o actualiza ese estado.
-- `GET /api/agenda`: devuelve los IDs de encuentros seleccionados por el usuario autenticado.
-- `PUT /api/agenda`: recibe `{ "encuentros": ["id-del-frontend"] }` y reemplaza la selección de ese usuario en una transacción.
+Las rutas de progreso y agenda requieren el token enviado como `Authorization: Bearer <token>`. El servidor obtiene el usuario de esa sesión, no de un identificador enviado por React. Los tokens viven en memoria hasta ocho horas o hasta que se cierre la sesión o se reinicie el servidor. Por eso, tras reiniciar Python hay que iniciar sesión otra vez; el progreso y la agenda siguen en SQLite.
 
-Progreso y agenda requieren sesión. Los estados aceptados son `aprobada`, `regular`, `cursando` y `pendiente`. Como los horarios siguen solamente en React, el servidor valida formato y duplicados de IDs, pero todavía no puede verificar que existan en los datos de horarios. Los tokens son aleatorios, viven en memoria hasta ocho horas y se invalidan al cerrar sesión o reiniciar el servidor. Progreso y agenda sí persisten en SQLite.
+El acceso de desarrollo está limitado al frontend `http://localhost:5173`. El servidor escucha en `127.0.0.1:8000`.
 
-Las respuestas son JSON. Los errores de entrada devuelven 400, credenciales o sesiones inválidas 401, origen no permitido 403, rutas inexistentes 404 y errores internos genéricos 500. No se escriben contraseñas ni tokens en los logs.
+## 9. Problemas frecuentes
+
+- **Windows no reconoce `py`:** probá `python` en lugar de `py`. Si tampoco aparece, instalá Python 3.10 o posterior y habilitá la opción para agregarlo al `PATH`.
+- **El frontend indica que no puede conectarse:** comprobá que la terminal del backend siga abierta y que muestre que está escuchando en el puerto 8000. Si se cerró, volvé a iniciar `py servidor.py` desde `backend`.
+- **El puerto 8000 está ocupado:** puede haber otra instancia del backend en ejecución. Detenela con Ctrl+C en su terminal antes de iniciar una nueva.
+- **PowerShell bloquea `npm`:** usá `npm.cmd ci` y `npm.cmd run dev`, como en los comandos anteriores.
