@@ -1,3 +1,4 @@
+/** Reune los tipos compartidos por las pantallas, datos y modelos de la app. */
 export type EstadoMateria = 'aprobada' | 'regular' | 'cursando' | 'pendiente';
 
 export type RolUsuario = 'estudiante' | 'docente';

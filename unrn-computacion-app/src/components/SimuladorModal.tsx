@@ -1,3 +1,4 @@
+/** Permite cambiar la hora simulada para probar los estados de las aulas. */
 import React, { useState } from 'react';
 import { X, Clock, Play, RotateCcw, Check } from 'lucide-react';
 import { timeSimulator, type HoraSimulada } from '../async/timeSimulator';

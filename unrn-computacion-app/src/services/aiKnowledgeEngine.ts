@@ -1,3 +1,4 @@
+/** Responde consultas sobre la carrera usando los datos academicos locales. */
 import { MATERIAS_DATA, INFO_CARRERA } from '../data/carreraData';
 import { HORARIOS_DATA, AULAS_DATA } from '../data/horariosData';
 import { CALENDARIO_DATA } from '../data/calendarioData';

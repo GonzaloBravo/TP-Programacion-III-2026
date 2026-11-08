@@ -1,3 +1,4 @@
+/** Define el modelo de un evento con fechas listas para consultar. */
 import type { EventoCalendarioRaw, CategoriaEvento } from '../types';
 
 /**

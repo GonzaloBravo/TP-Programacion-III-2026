@@ -1,3 +1,4 @@
+/** Actualiza la hora actual o simulada y avisa a quienes estan suscritos. */
 export interface HoraSimulada {
   dia: 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado' | 'domingo';
   horaTexto: string; // "14:30"

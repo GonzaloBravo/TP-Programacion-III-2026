@@ -1,3 +1,4 @@
+/** Permite recorrer el plan de estudios y actualizar el estado de cada materia. */
 import React, { useState } from 'react';
 import { GraduationCap, BookOpen, CheckCircle, Clock, AlertTriangle, ChevronRight, Award, Info, X } from 'lucide-react';
 import { Materia } from '../models/Materia';
@@ -8,12 +9,14 @@ interface PlanEstudiosViewProps {
   materias: Materia[];
   estadoAcademico: EstadoAcademicoUsuario;
   onUpdateEstadoMateria: (codigo: string, nuevoEstado: EstadoMateria) => void;
+  errorProgreso?: string | null;
 }
 
 export const PlanEstudiosView: React.FC<PlanEstudiosViewProps> = ({
   materias,
   estadoAcademico,
-  onUpdateEstadoMateria
+  onUpdateEstadoMateria,
+  errorProgreso
 }) => {
   const [anioSeleccionado, setAnioSeleccionado] = useState<number>(1);
   const [materiaDetalle, setMateriaDetalle] = useState<Materia | null>(null);
@@ -48,6 +51,13 @@ export const PlanEstudiosView: React.FC<PlanEstudiosViewProps> = ({
         </div>
 
         {/* Tarjeta de Progreso Académico y Título Intermedio */}
+        {errorProgreso && (
+          <div className="form-error-msg" role="alert">
+            <AlertTriangle size={14} />
+            <span>{errorProgreso}</span>
+          </div>
+        )}
+
         <div className="progress-summary-card">
           <div className="progress-card-col">
             <div className="progress-header-row">

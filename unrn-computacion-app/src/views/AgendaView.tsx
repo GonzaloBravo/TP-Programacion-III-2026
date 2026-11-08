@@ -1,3 +1,4 @@
+/** Organiza los encuentros elegidos por dia y muestra posibles superposiciones. */
 import React, { useState } from 'react';
 import { CalendarDays, Clock, MapPin, User, AlertTriangle, Check, BookPlus } from 'lucide-react';
 import { HorarioCursada } from '../models/HorarioCursada';
@@ -8,13 +9,17 @@ interface AgendaViewProps {
   horariosSeleccionados: HorarioCursada[];
   onToggleComision: (horario: HorarioCursada) => void;
   diaActual: string;
+  errorAgenda?: string | null;
+  guardandoAgenda?: boolean;
 }
 
 export const AgendaView: React.FC<AgendaViewProps> = ({
   todosLosHorarios,
   horariosSeleccionados,
   onToggleComision,
-  diaActual
+  diaActual,
+  errorAgenda,
+  guardandoAgenda = false
 }) => {
   const [vistaModo, setVistaModo] = useState<'semanal' | 'hoy' | 'comisiones'>('semanal');
 
@@ -72,6 +77,13 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
           </div>
         </div>
       </div>
+
+      {errorAgenda && (
+        <div className="form-error-msg" role="alert">
+          <AlertTriangle size={14} />
+          <span>{errorAgenda}</span>
+        </div>
+      )}
 
       {/* Alerta de Conflicto de Horarios si existe */}
       {conflictos.length > 0 && (
@@ -243,6 +255,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                         <button
                           key={com.id}
                           className={`comision-select-pill ${estaSeleccionada ? 'selected' : ''}`}
+                          disabled={guardandoAgenda}
                           onClick={() => onToggleComision(com)}
                         >
                           <div className="pill-check-indicator">

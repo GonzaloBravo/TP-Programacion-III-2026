@@ -1,3 +1,4 @@
+/** Define los datos precargados de aulas y encuentros de cursada. */
 import type { HorarioCursadaRaw, AulaInfo } from '../types';
 
 export const AULAS_DATA: AulaInfo[] = [

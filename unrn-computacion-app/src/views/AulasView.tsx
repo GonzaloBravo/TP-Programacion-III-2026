@@ -1,3 +1,4 @@
+/** Muestra las aulas y su ocupacion segun el horario seleccionado. */
 import React, { useState } from 'react';
 import { School, Clock, MapPin, User, Search, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { HoraSimulada } from '../async/timeSimulator';

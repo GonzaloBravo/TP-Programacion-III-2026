@@ -1,3 +1,4 @@
+/** Muestra el chat y comunica las consultas del usuario al asistente local. */
 import React, { useState, useRef, useEffect } from 'react';
 import { BotMessageSquare, Send, Sparkles, Key, Check, Info, User } from 'lucide-react';
 import { aiAssistant, type ChatMessage } from '../services/aiKnowledgeEngine';

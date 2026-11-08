@@ -1,3 +1,4 @@
+/** Presenta la navegacion principal entre las secciones de la aplicacion. */
 import React from 'react';
 import { Home, School, GraduationCap, CalendarDays, Bell, Calendar, BotMessageSquare } from 'lucide-react';
 

@@ -1327,6 +1327,22 @@
   box-shadow: var(--shadow-xl);
 }
 
+/* Modal de publicacion: centrado en el viewport, separado del area desplazable de la app. */
+.publication-modal-backdrop {
+  align-items: center;
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.publication-modal-content {
+  max-height: 85vh;
+  max-height: 85dvh;
+  border-radius: var(--radius-xl);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -2489,4 +2505,142 @@
 
 .input-error {
   border-color: var(--status-busy) !important;
+}
+
+/* Acceso de usuario y sesión local en memoria */
+.login-viewport {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+}
+
+.login-card {
+  width: min(100%, 420px);
+  padding: 32px;
+  border-radius: 24px;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.login-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--unrn-red-primary);
+  color: #fff;
+  margin-bottom: 18px;
+}
+
+.login-kicker,
+.login-description,
+.login-demo-hint {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.login-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.login-card h1 {
+  margin: 7px 0;
+  font-size: 28px;
+}
+
+.login-description {
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login-form label {
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 5px;
+}
+
+.login-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.login-submit:disabled {
+  opacity: .7;
+  cursor: wait;
+}
+
+.login-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--status-busy);
+  font-size: 13px;
+  margin: 4px 0;
+}
+
+.login-error svg {
+  flex: 0 0 auto;
+}
+
+.login-demo-hint {
+  font-size: 12px;
+  margin-top: 18px;
+  text-align: center;
+}
+
+.authenticated-user-bar {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.authenticated-user-role {
+  margin-left: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.session-logout-button {
+  border: 0;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--unrn-red-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.session-logout-button:hover {
+  background: var(--bg-app);
+}
+
+@media (max-width: 480px) {
+  .login-viewport {
+    padding: 16px;
+  }
+
+  .login-card {
+    padding: 24px;
+  }
 }

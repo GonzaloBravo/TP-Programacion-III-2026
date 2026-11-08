@@ -1,3 +1,4 @@
+/** Define el modelo de materia y sus reglas academicas principales. */
 import type { MateriaRaw, EstadoAcademicoUsuario } from '../types';
 
 /**
