@@ -73,7 +73,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
           </button>
         </form>
 
-        <p className="login-demo-hint">Cuentas disponibles: alumno1, alumna2 y docente.</p>
+        <p className="login-demo-hint">Cuentas disponibles: alumno1, alumno2 y docente.</p>
       </section>
     </main>
   );

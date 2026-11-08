@@ -7,49 +7,81 @@ Prototipo de aplicación web progresiva (**PWA**) inspirada en plataformas unive
 
 ---
 
-## 🚀 Guía de Instalación y Ejecución Rápida
+## 🚀 Guía de instalación y ejecución
 
-Para clonar y poner en funcionamiento la aplicación en tu computadora local, seguí estos pasos:
+La aplicación conserva el frontend React y utiliza un backend local Python con SQLite para las cuentas, el progreso y la agenda.
 
-### 1. Requisitos Previos
-* **Node.js** (versión 18.0 o superior recomendada). Podés verificarlo con `node -v`.
-* **Git** instalado. Podés verificarlo con `git -v`.
-* Un navegador web moderno (Google Chrome, Firefox, Microsoft Edge, Brave o Safari).
+**Tecnologías:** React, TypeScript y Vite en el frontend; Python y SQLite en el backend.
 
----
+### Requisitos
 
-### 2. Clonar el Repositorio
-Abrí una terminal (PowerShell, Git Bash o CMD) y ejecutá:
-```bash
-git clone https://github.com/GonzaloBravo/TP-Programacion-III-2026.git
+- Git.
+- Python 3.10 o posterior. En Windows se puede usar el lanzador `py`.
+- Node.js 20.19 o posterior, o 22.12 o posterior, requerido por la versión de Vite del proyecto.
+- Navegador web moderno.
+
+### Clonar la rama
+
+Cuando la rama esté publicada en GitHub, abrir PowerShell o Git Bash y ejecutar:
+
+```powershell
+git clone --branch feature/backend-simple https://github.com/GonzaloBravo/TP-Programacion-III-2026.git
+cd TP-Programacion-III-2026
+git switch feature/backend-simple
 ```
 
----
+La rama se mantiene separada de `main`; no hace falta fusionarla para ejecutarla.
 
-### 3. Ingresar a la Carpeta de la Aplicación
-```bash
-cd TP-Programacion-III-2026/unrn-computacion-app
+### Iniciar el backend
+
+En una primera terminal:
+
+```powershell
+cd backend
+py .\inicializar_db.py
+py .\servidor.py
 ```
 
----
+La inicialización crea o actualiza las cuentas demo sin borrar progreso ni agenda. La base local se guarda en `backend/data/unrn_computacion.db` y no se incluye en Git. El backend queda disponible en `http://127.0.0.1:8000`.
 
-### 4. Instalar Dependencias
-Instalá las librerías necesarias del proyecto (`react`, `lucide-react`, `vite`, etc.):
-```bash
-npm install
+### Instalar e iniciar el frontend
+
+En una segunda terminal, desde la raíz del repositorio:
+
+```powershell
+cd unrn-computacion-app
+npm.cmd ci
+npm.cmd run dev
 ```
 
----
+Abrir **http://localhost:5173**. Para comprobar una compilación de producción:
 
-### 5. Iniciar el Servidor de Desarrollo
-```bash
-npm run dev
+```powershell
+npm.cmd run build
 ```
 
-La consola te indicará la URL local activa. Abrí tu navegador en:
-👉 **[http://localhost:5173/](http://localhost:5173/)**
+### Cuentas de demostración
 
-> **Tip de Visualización:** La app cuenta en la esquina superior derecha con un botón para alternar entre **marco de simulación móvil de smartphone** o **pantalla completa**, además de un conmutador de **modo claro / modo oscuro**.
+| Usuario | Contraseña | Rol |
+|---|---|---|
+| `alumno1` | `alumno1` | alumno |
+| `alumno2` | `alumno2` | alumno |
+| `docente` | `docente` | docente |
+
+Son credenciales simples para la demostración académica; no deben reutilizarse fuera del prototipo.
+
+### Detener los servicios
+
+En cada terminal, presionar **Ctrl+C**: una vez en la terminal del frontend y otra en la del backend.
+
+### Problemas frecuentes en Windows
+
+- Si PowerShell bloquea `npm.ps1`, utilizar los comandos `npm.cmd` de esta guía.
+- Si `py` no está disponible, instalar Python y usar `python` en su lugar.
+- Si el puerto 8000 está ocupado, detener el otro proceso antes de iniciar el backend. El frontend usa el puerto 5173 por defecto.
+- Abrir el frontend en `http://localhost:5173` para que coincida con el origen permitido por el backend.
+
+La rama solo se podrá clonar con `--branch feature/backend-simple` después de que alguien con acceso la publique en el remoto.
 
 ---
 

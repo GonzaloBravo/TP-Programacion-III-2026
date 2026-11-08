@@ -10,7 +10,7 @@ Requiere Python 3.10 o posterior. Desde esta carpeta ejecutar:
 py .\inicializar_db.py
 ```
 
-El script crea `data/unrn_computacion.db`, las tres tablas y las cuentas demo que falten. Se puede ejecutar nuevamente: no duplica usuarios ni borra progreso o selecciones existentes. Las contrasenas de prueba estan definidas en `USUARIOS_DEMO` en `inicializar_db.py`; se almacenan como hashes PBKDF2-HMAC-SHA256 con sal aleatoria.
+El script crea `data/unrn_computacion.db`, las tres tablas y las cuentas demo que falten. También actualiza las credenciales demo anteriores y renombra `alumna2` a `alumno2`, conservando sus identificadores y datos asociados. Se puede ejecutar nuevamente: no duplica usuarios, borra progreso o selecciones, ni restablece contraseñas que hayan sido cambiadas posteriormente. Las contraseñas se almacenan como hashes PBKDF2-HMAC-SHA256 con sal aleatoria.
 
 ## Tablas
 
@@ -36,9 +36,9 @@ Estas cuentas son solo para el prototipo local:
 
 | Usuario | Contrasena de prueba | Rol |
 |---|---|---|
-| `alumno1` | `DemoAlumnoUno2026!` | alumno |
-| `alumna2` | `DemoAlumnaDos2026!` | alumno |
-| `docente` | `DemoDocente2026!` | docente |
+| `alumno1` | `alumno1` | alumno |
+| `alumno2` | `alumno2` | alumno |
+| `docente` | `docente` | docente |
 
 No reutilizar estas credenciales fuera de la demostracion.
 
