@@ -5,9 +5,8 @@ import type { TabId } from '../components/BottomNav';
 import type { HoraSimulada } from '../async/timeSimulator';
 import type { HorarioCursada } from '../models/HorarioCursada';
 import type { Materia } from '../models/Materia';
-import type { EstadoAcademicoUsuario } from '../types';
-import { CALENDARIO_DATA } from '../data/calendarioData';
-import { NOVEDADES_INICIALES } from '../data/carteleraData';
+import type { EventoCalendario } from '../models/EventoCalendario';
+import type { EstadoAcademicoUsuario, NovedadPost } from '../types';
 import { calcularProgresoCarrera } from '../functional/academicSelectors';
 
 interface InicioViewProps {
@@ -17,6 +16,8 @@ interface InicioViewProps {
   materias: Materia[];
   estadoAcademico: EstadoAcademicoUsuario;
   onOpenSimulador: () => void;
+  eventos?: EventoCalendario[];
+  novedades?: NovedadPost[];
 }
 
 export const InicioView: React.FC<InicioViewProps> = ({
@@ -25,11 +26,13 @@ export const InicioView: React.FC<InicioViewProps> = ({
   clasesEnCurso,
   materias,
   estadoAcademico,
-  onOpenSimulador
+  onOpenSimulador,
+  eventos = [],
+  novedades = []
 }) => {
   const progreso = calcularProgresoCarrera(materias, estadoAcademico);
-  const proximoEvento = CALENDARIO_DATA[4] || CALENDARIO_DATA[0]; // Hito de examen próximo
-  const ultimaNovedad = NOVEDADES_INICIALES[0];
+  const proximoEvento = eventos.find(e => e.categoria === 'examen') || eventos[0];
+  const ultimaNovedad = novedades[0];
 
   return (
     <div className="view-container animate-fade-in">
@@ -199,29 +202,31 @@ export const InicioView: React.FC<InicioViewProps> = ({
       )}
 
       {/* Cartelera Destacada */}
-      <section className="dashboard-section">
-        <div className="section-header">
-          <div className="section-title-wrap">
-            <Bell size={18} className="text-unrn-red" />
-            <h3>Último Aviso de Cátedra</h3>
+      {ultimaNovedad && (
+        <section className="dashboard-section">
+          <div className="section-header">
+            <div className="section-title-wrap">
+              <Bell size={18} className="text-unrn-red" />
+              <h3>Último Aviso de Cátedra</h3>
+            </div>
+            <button className="section-link-btn" onClick={() => onNavigate('cartelera')}>
+              Cartelera <ArrowRight size={14} />
+            </button>
           </div>
-          <button className="section-link-btn" onClick={() => onNavigate('cartelera')}>
-            Cartelera <ArrowRight size={14} />
-          </button>
-        </div>
 
-        <div className="notice-highlight-card" onClick={() => onNavigate('cartelera')}>
-          <div className="notice-card-header">
-            <span className="notice-author-badge">{ultimaNovedad.rolAutor}</span>
-            <span className="notice-date">{ultimaNovedad.fecha}</span>
+          <div className="notice-highlight-card" onClick={() => onNavigate('cartelera')}>
+            <div className="notice-card-header">
+              <span className="notice-author-badge">{ultimaNovedad.rolAutor}</span>
+              <span className="notice-date">{ultimaNovedad.fecha}</span>
+            </div>
+            <h4>{ultimaNovedad.titulo}</h4>
+            <p>{ultimaNovedad.contenido}</p>
+            <div className="notice-footer-meta">
+              <span>Por: <strong>{ultimaNovedad.autor}</strong></span>
+            </div>
           </div>
-          <h4>{ultimaNovedad.titulo}</h4>
-          <p>{ultimaNovedad.contenido}</p>
-          <div className="notice-footer-meta">
-            <span>Por: <strong>{ultimaNovedad.autor}</strong></span>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 };

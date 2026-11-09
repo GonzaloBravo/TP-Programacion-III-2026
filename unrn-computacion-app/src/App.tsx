@@ -21,6 +21,16 @@ import {
   ErrorApi,
   type SesionAutenticada,
 } from './services/authApi';
+import {
+  cargarMateriasApi,
+  cargarAulasApi,
+  cargarHorariosApi,
+  cargarCalendarioApi,
+  cargarNovedadesApi,
+  publicarNovedadApi,
+  darLikeNovedadApi,
+} from './services/academicApi';
+import { aiAssistant } from './services/aiKnowledgeEngine';
 
 // Models
 import { Materia } from './models/Materia';
@@ -28,15 +38,17 @@ import { Aula } from './models/Aula';
 import { HorarioCursada } from './models/HorarioCursada';
 import { EventoCalendario } from './models/EventoCalendario';
 
-// Data
-import { MATERIAS_DATA } from './data/carreraData';
-import { AULAS_DATA, HORARIOS_DATA } from './data/horariosData';
-import { CALENDARIO_DATA } from './data/calendarioData';
-import { NOVEDADES_INICIALES } from './data/carteleraData';
-
 // Async time simulator
 import { timeSimulator, type HoraSimulada } from './async/timeSimulator';
-import type { EstadoAcademicoUsuario, EstadoMateria, NovedadPost } from './types';
+import type {
+  EstadoAcademicoUsuario,
+  EstadoMateria,
+  NovedadPost,
+  MateriaRaw,
+  AulaInfo,
+  HorarioCursadaRaw,
+  EventoCalendarioRaw,
+} from './types';
 
 /** Mantiene el estado general y muestra el acceso o la aplicacion autenticada. */
 export function App() {
@@ -109,11 +121,70 @@ export function App() {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  // 6. Instanciación POO de entidades del dominio
-  const materias = useMemo(() => MATERIAS_DATA.map(m => new Materia(m)), []);
-  const aulas = useMemo(() => AULAS_DATA.map(a => new Aula(a)), []);
-  const todosLosHorarios = useMemo(() => HORARIOS_DATA.map(h => new HorarioCursada(h)), []);
-  const eventosCalendario = useMemo(() => CALENDARIO_DATA.map(e => new EventoCalendario(e)), []);
+  // 6. Datos maestros en memoria cargados dinámicamente desde la base de datos SQLite vía backend
+  const [rawMaterias, setRawMaterias] = useState<MateriaRaw[]>([]);
+  const [rawAulas, setRawAulas] = useState<AulaInfo[]>([]);
+  const [rawHorarios, setRawHorarios] = useState<HorarioCursadaRaw[]>([]);
+  const [rawCalendario, setRawCalendario] = useState<EventoCalendarioRaw[]>([]);
+  const [novedades, setNovedades] = useState<NovedadPost[]>([]);
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
+  const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
+  const [intentosCargaCatalogo, setIntentosCargaCatalogo] = useState(0);
+
+  // Instanciación POO de entidades del dominio
+  const materias = useMemo(() => rawMaterias.map(m => new Materia(m)), [rawMaterias]);
+  const aulas = useMemo(() => rawAulas.map(a => new Aula(a)), [rawAulas]);
+  const todosLosHorarios = useMemo(() => rawHorarios.map(h => new HorarioCursada(h)), [rawHorarios]);
+  const eventosCalendario = useMemo(() => rawCalendario.map(e => new EventoCalendario(e)), [rawCalendario]);
+
+  // Carga asincrónica de datos maestros desde el backend SQLite
+  useEffect(() => {
+    let vigente = true;
+    setErrorCatalogo(null);
+
+    Promise.all([
+      cargarMateriasApi(),
+      cargarAulasApi(),
+      cargarHorariosApi(),
+      cargarCalendarioApi(),
+      cargarNovedadesApi(),
+    ])
+      .then(([mats, aul, hor, cal, nov]) => {
+        if (!vigente) return;
+        setRawMaterias(mats);
+        setRawAulas(aul);
+        setRawHorarios(hor);
+        setRawCalendario(cal);
+        setNovedades(nov);
+
+        // Alimentar motor de IA dinámicamente con los datos de SQLite
+        aiAssistant.actualizarConocimiento({
+          materias: mats,
+          aulas: aul,
+          horarios: hor,
+          calendario: cal,
+        });
+      })
+      .catch((err) => {
+        if (!vigente) return;
+        console.error('Error al cargar catálogo desde el backend SQLite:', err);
+        setErrorCatalogo(
+          'No se pudo conectar con el servidor backend (http://127.0.0.1:8000). Verifique que esté iniciado.',
+        );
+      })
+      .finally(() => {
+        if (vigente) setCargandoCatalogo(false);
+      });
+
+    return () => {
+      vigente = false;
+    };
+  }, [intentosCargaCatalogo]);
+
+  const handleReintentarCatalogo = () => {
+    setCargandoCatalogo(true);
+    setIntentosCargaCatalogo(prev => prev + 1);
+  };
 
   // Progreso academico asociado a la cuenta autenticada.
   /** Limpia el progreso anterior antes de cargar el del usuario que inicio sesion. */
@@ -169,19 +240,26 @@ export function App() {
   };
 
   // 9. Novedades y Cartelera
-  const [novedades, setNovedades] = useState<NovedadPost[]>(() => {
-    const saved = localStorage.getItem('unrn_novedades');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* fallback */ }
+  const handleAgregarNovedad = async (nueva: Omit<NovedadPost, 'id' | 'likes'>) => {
+    if (sesion && sesion.usuario.rol === 'docente') {
+      try {
+        const creada = await publicarNovedadApi(sesion.token, {
+          titulo: nueva.titulo,
+          contenido: nueva.contenido,
+          codigoMateria: nueva.codigoMateria,
+          nombreMateria: nueva.nombreMateria,
+          importante: nueva.importante,
+        });
+        setNovedades(prev => [creada, ...prev.filter(n => n.id !== creada.id)]);
+        return;
+      } catch (err) {
+        console.warn('Error al guardar aviso en backend SQLite, aplicando fallback local:', err);
+      }
     }
-    return NOVEDADES_INICIALES;
-  });
-
-  const handleAgregarNovedad = (nueva: Omit<NovedadPost, 'id' | 'likes'>) => {
     const post: NovedadPost = {
       ...nueva,
       id: `nov-${Date.now()}`,
-      likes: 0
+      likes: 0,
     };
     setNovedades(prev => {
       const updated = [post, ...prev];
@@ -190,12 +268,18 @@ export function App() {
     });
   };
 
-  const handleLikeNovedad = (id: string) => {
-    setNovedades(prev => {
-      const updated = prev.map(n => n.id === id ? { ...n, likes: n.likes + 1 } : n);
-      localStorage.setItem('unrn_novedades', JSON.stringify(updated));
-      return updated;
-    });
+  const handleLikeNovedad = async (id: string) => {
+    setNovedades(prev =>
+      prev.map(n => (n.id === id ? { ...n, likes: n.likes + 1 } : n)),
+    );
+    try {
+      const nuevoTotal = await darLikeNovedadApi(id);
+      setNovedades(prev =>
+        prev.map(n => (n.id === id ? { ...n, likes: nuevoTotal } : n)),
+      );
+    } catch {
+      // Si el servidor no responde, se conserva el like optimista local
+    }
   };
 
   const handleLogout = async () => {
@@ -231,6 +315,29 @@ export function App() {
       h.estaEnCurso(horaInfo.dia, horaInfo.minutosDesdeMedianoche)
     );
   }, [todosLosHorarios, horaInfo]);
+
+  if (cargandoCatalogo) {
+    return (
+      <main className="login-viewport">
+        <section className="login-card glass-panel" role="status">
+          <p>Conectando con base de datos SQLite...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (errorCatalogo) {
+    return (
+      <main className="login-viewport">
+        <section className="login-card glass-panel">
+          <p className="login-error" role="alert">{errorCatalogo}</p>
+          <button className="btn-primary login-submit" type="button" onClick={handleReintentarCatalogo}>
+            Reintentar conexión
+          </button>
+        </section>
+      </main>
+    );
+  }
 
   if (!sesion) return <LoginView onLogin={handleLogin} />;
 
@@ -301,6 +408,8 @@ export function App() {
               materias={materias}
               estadoAcademico={estadoAcademico}
               onOpenSimulador={() => setSimuladorAbierto(true)}
+              eventos={eventosCalendario}
+              novedades={novedades}
             />
           )}
 
