@@ -1,7 +1,5 @@
-/** Responde consultas sobre la carrera usando los datos academicos locales. */
-import { MATERIAS_DATA, INFO_CARRERA } from '../data/carreraData';
-import { HORARIOS_DATA, AULAS_DATA } from '../data/horariosData';
-import { CALENDARIO_DATA } from '../data/calendarioData';
+/** Responde consultas sobre la carrera usando los datos academicos cargados desde la base de datos. */
+import type { MateriaRaw, HorarioCursadaRaw, AulaInfo, EventoCalendarioRaw } from '../types';
 
 export interface ChatMessage {
   id: string;
@@ -14,16 +12,47 @@ export interface ChatMessage {
 
 /**
  * Motor de Inteligencia Artificial para la App de Ingeniería en Computación - UNRN
- * Combina un procesador RAG local de alta fidelidad con todas las respuestas
- * exactas basadas en la documentación oficial, y soporte opcional para Gemini API.
+ * Combina un procesador RAG local de alta fidelidad con respuestas exactas basadas
+ * en la base de datos SQLite y soporte opcional para Gemini API.
  */
 export class AIKnowledgeEngine {
   private geminiApiKey: string = '';
+
+  private materias: MateriaRaw[] = [];
+  private horarios: HorarioCursadaRaw[] = [];
+  private aulas: AulaInfo[] = [];
+  private calendario: EventoCalendarioRaw[] = [];
+  private infoCarrera = {
+    nombre: "Ingeniería en Computación",
+    sede: "Sede Andina – San Carlos de Bariloche",
+    escuela: "Escuela de Producción, Tecnología y Medio Ambiente",
+    tituloGrado: "Ingeniero/a en Computación",
+    duracionGrado: "5 Años (3816 Horas)",
+    tituloIntermedio: "Técnico/a Universitario/a en Computación",
+    duracionIntermedio: "3 Años (2272 Horas)",
+    perfil: "Posee aptitudes científicas y tecnológicas para identificar, analizar, planear, diseñar, organizar, producir, operar y dar soporte a los sistemas electrónicos de procesamiento y transmisión de información.",
+    enfoqueRegional: "Desarrollo de sistemas embebidos para satélites, aplicación de técnicas de IA e implementación de sistemas de tiempo real."
+  };
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.geminiApiKey = localStorage.getItem('unrn_gemini_api_key') || '';
     }
+  }
+
+  /** Permite actualizar dinamicamente la base de conocimiento con datos de SQLite */
+  public actualizarConocimiento(datos: {
+    materias?: MateriaRaw[];
+    horarios?: HorarioCursadaRaw[];
+    aulas?: AulaInfo[];
+    calendario?: EventoCalendarioRaw[];
+    infoCarrera?: any;
+  }) {
+    if (datos.materias) this.materias = datos.materias;
+    if (datos.horarios) this.horarios = datos.horarios;
+    if (datos.aulas) this.aulas = datos.aulas;
+    if (datos.calendario) this.calendario = datos.calendario;
+    if (datos.infoCarrera) this.infoCarrera = { ...this.infoCarrera, ...datos.infoCarrera };
   }
 
   public setApiKey(key: string) {
@@ -62,8 +91,7 @@ export class AIKnowledgeEngine {
       }
     }
 
-    // Motor de inferencia local basado en el conocimiento oficial de los 4 PDFs
-    // Simula una breve latencia de razonamiento asincrónico para mejorar la experiencia de usuario
+    // Motor de inferencia local basado en el conocimiento de SQLite
     await new Promise(resolve => setTimeout(resolve, 600));
 
     const respuestaLocal = this.resolverConsultaLocal(pregunta);
@@ -82,8 +110,7 @@ export class AIKnowledgeEngine {
 
     // 1. CONSULTA DE CORRELATIVIDADES
     if (q.includes('correlativ') || q.includes('necesito para cursar') || q.includes('para rendir') || q.includes('puedo cursar')) {
-      // Buscar qué materia menciona
-      const materiaEncontrada = MATERIAS_DATA.find(m => {
+      const materiaEncontrada = this.materias.find(m => {
         const nom = m.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const cod = m.codigoGuarani.toLowerCase();
         return q.includes(nom) || q.includes(cod);
@@ -110,7 +137,7 @@ export class AIKnowledgeEngine {
 - **Para Rendir Examen Final (Aprobada requerida):** ${aprobAprobar}
 
 *Año:* ${materiaEncontrada.anio}° Año | *Cuatrimestre:* ${materiaEncontrada.cuatrimestre}° | *Carga horaria:* ${materiaEncontrada.horasTotales} hs.`,
-          fuente: 'Plan de Estudios Oficial - Res. CSDEyVE 044/2019',
+          fuente: 'Base de Datos SQLite - Plan de Estudios Oficial UNRN',
           sugerencias: [
             `¿Qué contenidos tiene ${materiaEncontrada.nombre}?`,
             `¿En qué aula y horario se cursa?`,
@@ -122,14 +149,14 @@ export class AIKnowledgeEngine {
 
     // 2. CONSULTAS SOBRE HORARIOS, AULAS O DOCENTES
     if (q.includes('aula') || q.includes('horario') || q.includes('donde se cursa') || q.includes('docente') || q.includes('quien da') || q.includes('profesor') || q.includes('email')) {
-      const materiaEncontrada = HORARIOS_DATA.find(h => {
+      const materiaEncontrada = this.horarios.find(h => {
         const nom = h.nombreMateria.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const cod = h.codigoMateria.toLowerCase();
         return q.includes(nom) || q.includes(cod);
       });
 
       if (materiaEncontrada) {
-        const todasLasComisiones = HORARIOS_DATA.filter(h => h.codigoMateria === materiaEncontrada.codigoMateria);
+        const todasLasComisiones = this.horarios.filter(h => h.codigoMateria === materiaEncontrada.codigoMateria);
         let detalle = `🏛️ **Horarios y Aulas de ${materiaEncontrada.nombreMateria} (2° Cuatrimestre 2026)**:\n\n`;
 
         todasLasComisiones.forEach(c => {
@@ -143,7 +170,7 @@ export class AIKnowledgeEngine {
 
         return {
           texto: detalle,
-          fuente: 'Cronograma Semanal 2° Cuatrimestre 2026 - UNRN Bariloche',
+          fuente: 'Base de Datos SQLite - Cronograma Semanal UNRN',
           sugerencias: [
             `¿Qué correlativas pide esta materia?`,
             `¿Qué aulas tiene la sede Anasagasti 2?`,
@@ -153,9 +180,9 @@ export class AIKnowledgeEngine {
       }
 
       // Si consulta sobre un aula específica
-      const aulaEncontrada = AULAS_DATA.find(a => q.includes(a.id.toLowerCase()) || q.includes(a.nombre.toLowerCase()));
+      const aulaEncontrada = this.aulas.find(a => q.includes(a.id.toLowerCase()) || q.includes(a.nombre.toLowerCase()));
       if (aulaEncontrada) {
-        const clasesEnAula = HORARIOS_DATA.filter(h => h.aula.toLowerCase() === aulaEncontrada.id.toLowerCase());
+        const clasesEnAula = this.horarios.filter(h => h.aula.toLowerCase() === aulaEncontrada.id.toLowerCase());
         let textoAula = `📍 **${aulaEncontrada.nombre}**\n` +
           `• Sede: **${aulaEncontrada.sede}**\n` +
           `• Tipo: **${aulaEncontrada.tipo === 'laboratorio' ? 'Laboratorio de Computación/Electrónica' : 'Aula de Teoría/Práctica'}**\n\n` +
@@ -171,7 +198,7 @@ export class AIKnowledgeEngine {
 
         return {
           texto: textoAula,
-          fuente: 'Distribución de Aulas Sede Andina 2026',
+          fuente: 'Base de Datos SQLite - Distribución de Aulas Sede Andina',
           sugerencias: ['¿Dónde queda la sede Malvinas Argentinas?', 'Ver estado de aulas en tiempo real']
         };
       }
@@ -179,16 +206,16 @@ export class AIKnowledgeEngine {
 
     // 3. CONSULTAS SOBRE CALENDARIO ACADÉMICO / EXÁMENES / RECESO / INSCRIPCIONES
     if (q.includes('examen') || q.includes('mesa') || q.includes('calendario') || q.includes('inscripci') || q.includes('receso') || q.includes('feriado') || q.includes('cuatrimestre')) {
-      let eventosRelevantes = CALENDARIO_DATA;
+      let eventosRelevantes = this.calendario;
 
       if (q.includes('febrero')) {
-        eventosRelevantes = CALENDARIO_DATA.filter(e => e.titulo.toLowerCase().includes('febrero') || e.fechaTexto.includes('/02/'));
+        eventosRelevantes = this.calendario.filter(e => e.titulo.toLowerCase().includes('febrero') || e.fechaTexto.includes('/02/'));
       } else if (q.includes('julio')) {
-        eventosRelevantes = CALENDARIO_DATA.filter(e => e.titulo.toLowerCase().includes('julio') || e.fechaTexto.includes('/07/'));
+        eventosRelevantes = this.calendario.filter(e => e.titulo.toLowerCase().includes('julio') || e.fechaTexto.includes('/07/'));
       } else if (q.includes('diciembre')) {
-        eventosRelevantes = CALENDARIO_DATA.filter(e => e.titulo.toLowerCase().includes('diciembre') || e.fechaTexto.includes('/12/'));
+        eventosRelevantes = this.calendario.filter(e => e.titulo.toLowerCase().includes('diciembre') || e.fechaTexto.includes('/12/'));
       } else if (q.includes('receso') || q.includes('vacaciones')) {
-        eventosRelevantes = CALENDARIO_DATA.filter(e => e.categoria === 'receso');
+        eventosRelevantes = this.calendario.filter(e => e.categoria === 'receso');
       }
 
       let resp = `📅 **Fechas clave del Calendario Académico UNRN 2026**:\n\n`;
@@ -198,7 +225,7 @@ export class AIKnowledgeEngine {
 
       return {
         texto: resp,
-        fuente: 'Resolución CSDEyVE N° 038/2024 - Calendario Académico UNRN',
+        fuente: 'Base de Datos SQLite - Calendario Académico UNRN',
         sugerencias: [
           '¿Cuándo son los exámenes de Julio?',
           '¿Cuándo es el receso de invierno?',
@@ -210,17 +237,17 @@ export class AIKnowledgeEngine {
     // 4. CONSULTAS SOBRE EL TÍTULO INTERMEDIO O DE GRADO
     if (q.includes('titulo intermedio') || q.includes('tecnico') || q.includes('alcance') || q.includes('perfil') || q.includes('duracion') || q.includes('horas')) {
       return {
-        texto: `🎓 **Títulos de la Carrera de ${INFO_CARRERA.nombre} (${INFO_CARRERA.sede})**:
+        texto: `🎓 **Títulos de la Carrera de ${this.infoCarrera.nombre} (${this.infoCarrera.sede})**:
 
-1. **Título de Grado: ${INFO_CARRERA.tituloGrado}**
-   - **Duración:** ${INFO_CARRERA.duracionGrado}
-   - **Perfil:** ${INFO_CARRERA.perfil}
-   - **Enfoque Regional:** ${INFO_CARRERA.enfoqueRegional}
+1. **Título de Grado: ${this.infoCarrera.tituloGrado}**
+   - **Duración:** ${this.infoCarrera.duracionGrado}
+   - **Perfil:** ${this.infoCarrera.perfil}
+   - **Enfoque Regional:** ${this.infoCarrera.enfoqueRegional}
 
-2. **Título Intermedio: ${INFO_CARRERA.tituloIntermedio}**
-   - **Duración:** ${INFO_CARRERA.duracionIntermedio}
+2. **Título Intermedio: ${this.infoCarrera.tituloIntermedio}**
+   - **Duración:** ${this.infoCarrera.duracionIntermedio}
    - **Alcances:** Asistir técnicamente en software y hardware, sistemas embebidos, transmisión de señales y administración básica de redes.`,
-        fuente: 'Ficha de Carrera UNRN - Res. Ministerial N° 762/2021',
+        fuente: 'Base de Datos SQLite - Información Oficial de Carrera',
         sugerencias: [
           '¿Qué materias componen el 3° año?',
           '¿Qué correlativas pide Seguridad Ambiental?',
@@ -231,7 +258,7 @@ export class AIKnowledgeEngine {
 
     // 5. CONSULTA DE CONTENIDOS MÍNIMOS DE UNA ASIGNATURA
     if (q.includes('contenido') || q.includes('temas') || q.includes('programa') || q.includes('de que trata') || q.includes('aprende')) {
-      const mat = MATERIAS_DATA.find(m => {
+      const mat = this.materias.find(m => {
         const nom = m.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         return q.includes(nom);
       });
@@ -244,7 +271,7 @@ ${mat.contenidosMinimos}
 
 🎯 **Objetivos Principales:**
 ${(mat.objetivos || []).map(o => `• ${o}`).join('\n')}`,
-          fuente: 'Plan de Estudios Oficial UNRN - Contenidos Mínimos',
+          fuente: 'Base de Datos SQLite - Contenidos Mínimos',
           sugerencias: [
             `¿Qué correlativas tiene ${mat.nombre}?`,
             `¿En qué horario se dicta?`
@@ -264,7 +291,7 @@ Puedo ayudarte con información precisa sobre:
 4. **Plan de Estudios**: Cargas horarias, título intermedio de Técnico Universitario y contenidos mínimos.
 
 ¿Sobre qué tema te gustaría consultar?`,
-      fuente: 'Base de Conocimiento Oficial UNRN Sede Andina',
+      fuente: 'Base de Datos SQLite - UNRN Sede Andina',
       sugerencias: [
         '¿Qué necesito para cursar Inteligencia Artificial?',
         '¿Dónde y cuándo se cursa Programación I?',
@@ -275,7 +302,7 @@ Puedo ayudarte con información precisa sobre:
   }
 
   private obtenerNombreMateria(codigo: string): string {
-    const mat = MATERIAS_DATA.find(m => m.codigoGuarani === codigo || m.nombre.toLowerCase() === codigo.toLowerCase());
+    const mat = this.materias.find(m => m.codigoGuarani === codigo || m.nombre.toLowerCase() === codigo.toLowerCase());
     return mat ? `${mat.nombre} (${mat.codigoGuarani})` : codigo;
   }
 

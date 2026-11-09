@@ -60,7 +60,7 @@ Estoy capacitado con toda la documentación oficial de la carrera:
     try {
       const respuestaIA = await aiAssistant.responderConsulta(texto);
       setMensajes(prev => [...prev, respuestaIA]);
-    } catch (err) {
+    } catch {
       setMensajes(prev => [
         ...prev,
         {

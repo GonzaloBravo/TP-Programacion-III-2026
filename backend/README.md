@@ -74,11 +74,19 @@ Estas cuentas se utilizan solo para la demostración académica:
 
 ## 7. ¿Qué información se guarda?
 
-- **`usuarios`** guarda el nombre, nombre de usuario, hash de contraseña y rol (`alumno` o `docente`). Nunca guarda la contraseña en texto plano.
-- **`progreso_academico`** guarda el estado de cada materia por alumno, por ejemplo aprobada, regular o cursando.
-- **`agenda_usuario`** guarda los identificadores de los encuentros seleccionados por cada usuario. Los horarios y las materias de referencia siguen definidos en el frontend.
+- **`usuarios`**: guarda el nombre, nombre de usuario, hash de contraseña (PBKDF2) y rol (`alumno` o `docente`). Nunca guarda contraseñas en texto plano.
+- **`progreso_academico`**: guarda el estado de cada materia por alumno (`aprobada`, `regular`, `cursando`, `pendiente`).
+- **`agenda_usuario`**: guarda los identificadores de los encuentros y comisiones seleccionados por cada alumno.
+- **`materias`**: almacena el plan de estudios oficial (38 asignaturas) conforme a la Res. CSDEyVE 044/2019 con código Guaraní, año, cuatrimestre, horas y contenidos mínimos.
+- **`correlativas`**: almacena los requisitos de regularizadas y aprobadas para cursar y rendir cada materia.
+- **`objetivos_materia`**: almacena los objetivos pedagógicos de cada cátedra.
+- **`aulas`**: almacena la distribución de aulas físicas (Anasagasti 1, Anasagasti 2, Tacuarí 150) y virtuales.
+- **`horarios_cursada`**: almacena las comisiones, días, franjas horarias, docentes y auxiliares de cursada.
+- **`eventos_calendario`**: almacena el calendario académico oficial (turnos de exámenes, recesos y feriados).
+- **`novedades_cartelera`**: almacena los avisos y comunicados oficiales emitidos por los docentes con persistencia compartida.
+- **`info_carrera`**: almacena los metadatos institucionales de la carrera de Ingeniería en Computación.
 
-La base vive en `backend/data/unrn_computacion.db` y está excluida del control de versiones. El progreso y la agenda permanecen guardados aunque se cierre el servidor.
+La base vive en `backend/data/unrn_computacion.db` y está excluida del control de versiones. Todo el catálogo, el progreso, la agenda y los comunicados permanecen guardados aunque se cierre el servidor.
 
 ## 8. Información técnica
 
@@ -92,8 +100,15 @@ El servidor usa bibliotecas incluidas en Python (`http.server`, `sqlite3` y `jso
 | `PUT /api/progreso` | Guarda el estado de una materia del usuario autenticado. |
 | `GET /api/agenda` | Consulta los encuentros seleccionados por el usuario autenticado. |
 | `PUT /api/agenda` | Guarda la selección de encuentros de ese usuario. |
+| `GET /api/materias` | Consulta el plan de estudios completo, correlatividades y contenidos mínimos. |
+| `GET /api/aulas` | Consulta la nómina de aulas y sedes de Bariloche. |
+| `GET /api/horarios` | Consulta las comisiones, días, horarios y docentes. |
+| `GET /api/calendario` | Consulta las fechas del calendario académico oficial. |
+| `GET /api/novedades` | Consulta las publicaciones de la cartelera virtual. |
+| `POST /api/novedades` | Permite a un docente autenticado publicar un comunicado oficial en SQLite. |
+| `POST /api/novedades/like` | Registra un me gusta en una publicación. |
 
-Las rutas de progreso y agenda requieren el token enviado como `Authorization: Bearer <token>`. El servidor obtiene el usuario de esa sesión, no de un identificador enviado por React. Los tokens viven en memoria hasta ocho horas o hasta que se cierre la sesión o se reinicie el servidor. Por eso, tras reiniciar Python hay que iniciar sesión otra vez; el progreso y la agenda siguen en SQLite.
+Las rutas de progreso, agenda y publicación de novedades requieren el token enviado como `Authorization: Bearer <token>`. El servidor obtiene el usuario de esa sesión, no de un identificador enviado por React. Los tokens viven en memoria hasta ocho horas o hasta que se cierre la sesión o se reinicie el servidor. Por eso, tras reiniciar Python hay que iniciar sesión otra vez; el catálogo universitario, el progreso y la agenda siguen en SQLite.
 
 El acceso de desarrollo está limitado al frontend `http://localhost:5173`. El servidor escucha en `127.0.0.1:8000`.
 

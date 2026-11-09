@@ -111,49 +111,64 @@ export const CarteleraView: React.FC<CarteleraViewProps> = ({
 
       {/* Lista de Publicaciones */}
       <div className="novedades-feed">
-        {novedadesFiltradas.map(nov => (
-          <article key={nov.id} className={`novedad-card ${nov.importante ? 'pinned' : ''}`}>
-            {nov.importante && (
-              <div className="pinned-badge">
-                <Pin size={12} />
-                <span>Aviso Destacado</span>
-              </div>
+        {novedadesFiltradas.length === 0 ? (
+          <div className="empty-cartelera-notice" style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.4rem' }}>No hay avisos publicados en la cartelera en este momento.</p>
+            {esDocente ? (
+              <p style={{ fontSize: '0.85rem' }}>
+                Como docente, podés presionar <strong>"Publicar Aviso"</strong> para redactar un comunicado para los estudiantes.
+              </p>
+            ) : (
+              <p style={{ fontSize: '0.85rem' }}>
+                Los avisos y comunicados oficiales aparecerán aquí cuando los docentes de las cátedras realicen una publicación.
+              </p>
             )}
-
-            <div className="novedad-card-header">
-              <div className="author-meta">
-                <div className={`avatar-circle ${nov.rolAutor === 'Docente' ? 'docente' : 'estudiante'}`}>
-                  {nov.autor.charAt(0)}
+          </div>
+        ) : (
+          novedadesFiltradas.map(nov => (
+            <article key={nov.id} className={`novedad-card ${nov.importante ? 'pinned' : ''}`}>
+              {nov.importante && (
+                <div className="pinned-badge">
+                  <Pin size={12} />
+                  <span>Aviso Destacado</span>
                 </div>
-                <div>
-                  <span className="author-name">{nov.autor}</span>
-                  <div className="author-sub">
-                    <span className="role-tag">{nov.rolAutor}</span>
-                    {nov.nombreMateria && <span className="subject-tag">{nov.nombreMateria}</span>}
+              )}
+
+              <div className="novedad-card-header">
+                <div className="author-meta">
+                  <div className={`avatar-circle ${nov.rolAutor === 'Docente' ? 'docente' : 'estudiante'}`}>
+                    {nov.autor.charAt(0)}
+                  </div>
+                  <div>
+                    <span className="author-name">{nov.autor}</span>
+                    <div className="author-sub">
+                      <span className="role-tag">{nov.rolAutor}</span>
+                      {nov.nombreMateria && <span className="subject-tag">{nov.nombreMateria}</span>}
+                    </div>
                   </div>
                 </div>
+
+                <span className="post-date">{nov.fecha} {nov.hora}</span>
               </div>
 
-              <span className="post-date">{nov.fecha} {nov.hora}</span>
-            </div>
+              <div className="novedad-content">
+                <h4>{nov.titulo}</h4>
+                <p>{nov.contenido}</p>
+              </div>
 
-            <div className="novedad-content">
-              <h4>{nov.titulo}</h4>
-              <p>{nov.contenido}</p>
-            </div>
-
-            <div className="novedad-footer">
-              <button
-                className="like-btn"
-                onClick={() => onLikeNovedad(nov.id)}
-                aria-label="Dar me gusta"
-              >
-                <Heart size={15} className="text-busy" fill={nov.likes > 20 ? '#EF4444' : 'none'} />
-                <span>{nov.likes} me gusta</span>
-              </button>
-            </div>
-          </article>
-        ))}
+              <div className="novedad-footer">
+                <button
+                  className="like-btn"
+                  onClick={() => onLikeNovedad(nov.id)}
+                  aria-label="Dar me gusta"
+                >
+                  <Heart size={15} className="text-busy" fill={nov.likes > 20 ? '#EF4444' : 'none'} />
+                  <span>{nov.likes} me gusta</span>
+                </button>
+              </div>
+            </article>
+          ))
+        )}
       </div>
 
       {/* Modal 2: Crear Publicación (Solo accesible para Docentes autenticados) */}

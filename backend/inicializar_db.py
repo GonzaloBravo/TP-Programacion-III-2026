@@ -1,6 +1,7 @@
-"""Prepara la base SQLite y crea las cuentas de demostracion que falten."""
+"""Prepara la base SQLite, crea las tablas maestras y las cuentas de demostracion."""
 
 import hashlib
+import json
 import secrets
 import sqlite3
 from pathlib import Path
@@ -8,6 +9,7 @@ from pathlib import Path
 
 DIRECTORIO_BACKEND = Path(__file__).resolve().parent
 RUTA_DB = DIRECTORIO_BACKEND / "data" / "unrn_computacion.db"
+RUTA_SEED = DIRECTORIO_BACKEND / "data" / "seed_data.json"
 
 ITERACIONES_PBKDF2 = 310_000
 LONGITUD_SAL = 16
@@ -76,12 +78,13 @@ def verificar_hash_contrasena(contrasena: str, hash_guardado: str) -> bool:
 
 
 def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
-    """Crea las tablas y agrega las cuentas demo faltantes sin borrar datos."""
+    """Crea las tablas y agrega las cuentas demo y los datos maestros sin borrar datos."""
     conexion = conectar(ruta_db)
 
     try:
         conexion.execute("BEGIN")
 
+        # 1. Tablas de usuarios y sesion
         conexion.execute(
             """
             CREATE TABLE IF NOT EXISTS usuarios (
@@ -119,6 +122,128 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
             """
         )
 
+        # 2. Tablas del Catalogo Universitario (Migracion de datos maestros)
+        conexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS info_carrera (
+                clave TEXT PRIMARY KEY,
+                valor TEXT NOT NULL
+            )
+            """
+        )
+
+        conexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS materias (
+                codigo_guarani TEXT PRIMARY KEY,
+                nro_orden TEXT,
+                nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+                anio INTEGER NOT NULL CHECK (anio BETWEEN 1 AND 5),
+                cuatrimestre INTEGER NOT NULL CHECK (cuatrimestre IN (1, 2)),
+                horas_semanales INTEGER,
+                horas_totales INTEGER NOT NULL,
+                es_optativa INTEGER NOT NULL DEFAULT 0,
+                contenidos_minimos TEXT
+            )
+            """
+        )
+
+        conexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS correlativas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                materia_codigo TEXT NOT NULL,
+                requisito_codigo TEXT NOT NULL,
+                tipo_requisito TEXT NOT NULL CHECK (
+                    tipo_requisito IN ('regularizada_para_cursar', 'aprobada_para_cursar', 'aprobada_para_aprobar')
+                ),
+                FOREIGN KEY (materia_codigo) REFERENCES materias(codigo_guarani) ON DELETE CASCADE,
+                UNIQUE (materia_codigo, requisito_codigo, tipo_requisito)
+            )
+            """
+        )
+
+        conexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS objetivos_materia (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                materia_codigo TEXT NOT NULL,
+                objetivo TEXT NOT NULL,
+                FOREIGN KEY (materia_codigo) REFERENCES materias(codigo_guarani) ON DELETE CASCADE
+            )
+            """
+        )
+
+        conexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS aulas (
+                id TEXT PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                sede TEXT NOT NULL,
+                tipo TEXT NOT NULL,
+                capacidad_aprox INTEGER
+            )
+            """
+        )
+
+        conexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS horarios_cursada (
+                id TEXT PRIMARY KEY,
+                codigo_materia TEXT NOT NULL,
+                nombre_materia TEXT NOT NULL,
+                comision TEXT NOT NULL,
+                tipo_clase TEXT,
+                lugar TEXT,
+                aula_id TEXT,
+                dia_semana TEXT NOT NULL,
+                hora_desde TEXT NOT NULL,
+                hora_hasta TEXT NOT NULL,
+                duracion TEXT NOT NULL,
+                docente TEXT NOT NULL,
+                email_docente TEXT,
+                auxiliar TEXT,
+                email_auxiliar TEXT,
+                observaciones TEXT,
+                anio INTEGER NOT NULL
+            )
+            """
+        )
+
+        conexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS eventos_calendario (
+                id TEXT PRIMARY KEY,
+                fecha_texto TEXT NOT NULL,
+                fecha_inicio TEXT NOT NULL,
+                fecha_fin TEXT,
+                titulo TEXT NOT NULL,
+                categoria TEXT NOT NULL,
+                descripcion TEXT,
+                resolucion TEXT
+            )
+            """
+        )
+
+        conexion.execute(
+            """
+            CREATE TABLE IF NOT EXISTS novedades_cartelera (
+                id TEXT PRIMARY KEY,
+                titulo TEXT NOT NULL,
+                contenido TEXT NOT NULL,
+                autor TEXT NOT NULL,
+                rol_autor TEXT NOT NULL,
+                codigo_materia TEXT,
+                nombre_materia TEXT,
+                fecha TEXT NOT NULL,
+                hora TEXT NOT NULL,
+                importante INTEGER NOT NULL DEFAULT 0,
+                likes INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+
+        # 3. Migracion / Ajuste de usuarios de prueba
         usuario_anterior = conexion.execute(
             "SELECT id FROM usuarios WHERE nombre_usuario = ?",
             (NOMBRE_USUARIO_ANTERIOR,),
@@ -165,6 +290,163 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
                 (nombre, nombre_usuario, crear_hash_contrasena(contrasena), rol),
             )
 
+        # 4. Poblar datos maestros desde seed_data.json si esta disponible
+        if RUTA_SEED.exists():
+            with open(RUTA_SEED, "r", encoding="utf-8") as f:
+                seed = json.load(f)
+
+            # Info carrera
+            if "info_carrera" in seed and isinstance(seed["info_carrera"], dict):
+                for k, v in seed["info_carrera"].items():
+                    val_str = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
+                    conexion.execute(
+                        "INSERT OR REPLACE INTO info_carrera (clave, valor) VALUES (?, ?)",
+                        (k, val_str)
+                    )
+
+            # Materias, correlativas y objetivos
+            for m in seed.get("materias", []):
+                cod = m["codigoGuarani"]
+                conexion.execute(
+                    """
+                    INSERT OR REPLACE INTO materias 
+                    (codigo_guarani, nro_orden, nombre, anio, cuatrimestre, horas_semanales, horas_totales, es_optativa, contenidos_minimos)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        cod,
+                        m.get("nroOrden", ""),
+                        m["nombre"],
+                        m["anio"],
+                        m["cuatrimestre"],
+                        m.get("horasSemanales", 0),
+                        m.get("horasTotales", 0),
+                        1 if m.get("esOptativa") else 0,
+                        m.get("contenidosMinimos", "")
+                    )
+                )
+
+                for req in m.get("regularizadaParaCursar", []):
+                    conexion.execute(
+                        """
+                        INSERT OR IGNORE INTO correlativas 
+                        (materia_codigo, requisito_codigo, tipo_requisito)
+                        VALUES (?, ?, 'regularizada_para_cursar')
+                        """,
+                        (cod, req)
+                    )
+                for req in m.get("aprobadaParaCursar", []):
+                    conexion.execute(
+                        """
+                        INSERT OR IGNORE INTO correlativas 
+                        (materia_codigo, requisito_codigo, tipo_requisito)
+                        VALUES (?, ?, 'aprobada_para_cursar')
+                        """,
+                        (cod, req)
+                    )
+                for req in m.get("aprobadaParaAprobar", []):
+                    conexion.execute(
+                        """
+                        INSERT OR IGNORE INTO correlativas 
+                        (materia_codigo, requisito_codigo, tipo_requisito)
+                        VALUES (?, ?, 'aprobada_para_aprobar')
+                        """,
+                        (cod, req)
+                    )
+
+                for obj in m.get("objetivos", []):
+                    existe_obj = conexion.execute(
+                        "SELECT 1 FROM objetivos_materia WHERE materia_codigo = ? AND objetivo = ?",
+                        (cod, obj)
+                    ).fetchone()
+                    if not existe_obj:
+                        conexion.execute(
+                            "INSERT INTO objetivos_materia (materia_codigo, objetivo) VALUES (?, ?)",
+                            (cod, obj)
+                        )
+
+            # Aulas
+            for a in seed.get("aulas", []):
+                conexion.execute(
+                    """
+                    INSERT OR REPLACE INTO aulas (id, nombre, sede, tipo, capacidad_aprox)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (a["id"], a["nombre"], a["sede"], a["tipo"], a.get("capacidadAprox"))
+                )
+
+            # Horarios de cursada
+            for h in seed.get("horarios", []):
+                conexion.execute(
+                    """
+                    INSERT OR REPLACE INTO horarios_cursada
+                    (id, codigo_materia, nombre_materia, comision, tipo_clase, lugar, aula_id, dia_semana, hora_desde, hora_hasta, duracion, docente, email_docente, auxiliar, email_auxiliar, observaciones, anio)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        h["id"],
+                        h["codigoMateria"],
+                        h["nombreMateria"],
+                        h["comision"],
+                        h.get("tipoClase", "Teoría / Práctica"),
+                        h.get("lugar", ""),
+                        h.get("aula", ""),
+                        h["diaSemana"],
+                        h["horaDesde"],
+                        h["horaHasta"],
+                        h["duracion"],
+                        h["docente"],
+                        h.get("emailDocente"),
+                        h.get("auxiliar"),
+                        h.get("emailAuxiliar"),
+                        h.get("observaciones"),
+                        h.get("anio", 1)
+                    )
+                )
+
+            # Calendario
+            for ev in seed.get("calendario", []):
+                conexion.execute(
+                    """
+                    INSERT OR REPLACE INTO eventos_calendario
+                    (id, fecha_texto, fecha_inicio, fecha_fin, titulo, categoria, descripcion, resolucion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        ev["id"],
+                        ev["fechaTexto"],
+                        ev["fechaInicio"],
+                        ev.get("fechaFin"),
+                        ev["titulo"],
+                        ev["categoria"],
+                        ev.get("descripcion"),
+                        ev.get("resolucion")
+                    )
+                )
+
+            # Novedades iniciales (INSERT OR IGNORE para respetar avisos docentes creados)
+            for nov in seed.get("novedades", []):
+                conexion.execute(
+                    """
+                    INSERT OR IGNORE INTO novedades_cartelera
+                    (id, titulo, contenido, autor, rol_autor, codigo_materia, nombre_materia, fecha, hora, importante, likes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        nov["id"],
+                        nov["titulo"],
+                        nov["contenido"],
+                        nov["autor"],
+                        nov["rolAutor"],
+                        nov.get("codigoMateria"),
+                        nov.get("nombreMateria"),
+                        nov["fecha"],
+                        nov["hora"],
+                        1 if nov.get("importante") else 0,
+                        nov.get("likes", 0)
+                    )
+                )
+
         conexion.commit()
     except Exception:
         conexion.rollback()
@@ -175,4 +457,4 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
 
 if __name__ == "__main__":
     inicializar_db()
-    print(f"Base SQLite inicializada en: {RUTA_DB}")
+    print(f"Base SQLite inicializada exitosamente en: {RUTA_DB}")
