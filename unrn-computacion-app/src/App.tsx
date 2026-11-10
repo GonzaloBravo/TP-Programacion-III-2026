@@ -444,6 +444,7 @@ export function App() {
 
           {activeTab === 'cartelera' && (
             <CarteleraView
+              materias={materias}
               novedades={novedades}
               onAgregarNovedad={handleAgregarNovedad}
               onLikeNovedad={handleLikeNovedad}

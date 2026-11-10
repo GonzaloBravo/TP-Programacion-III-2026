@@ -75,6 +75,7 @@ Estas cuentas se utilizan solo para la demostración académica:
 ## 7. ¿Qué información se guarda?
 
 - **`usuarios`**: guarda el nombre, nombre de usuario, hash de contraseña (PBKDF2) y rol (`alumno` o `docente`). Nunca guarda contraseñas en texto plano.
+- Las cuentas nuevas también guardan apellido y DNI. El DNI es privado y no se devuelve al frontend. Al iniciar, el backend agrega estas columnas si faltan, sin volver a cargar el seed académico ni borrar cuentas existentes.
 - **`progreso_academico`**: guarda el estado de cada materia por alumno (`aprobada`, `regular`, `cursando`, `pendiente`).
 - **`agenda_usuario`**: guarda los identificadores de los encuentros y comisiones seleccionados por cada alumno.
 - **`materias`**: almacena el plan de estudios oficial (38 asignaturas) conforme a la Res. CSDEyVE 044/2019 con código Guaraní, año, cuatrimestre, horas y contenidos mínimos.
@@ -94,6 +95,7 @@ El servidor usa bibliotecas incluidas en Python (`http.server`, `sqlite3` y `jso
 
 | Método y ruta | Función |
 |---|---|
+| `POST /api/registro` | Crea una cuenta de alumno o docente, con DNI y nombre de usuario únicos. |
 | `POST /api/login` | Verifica las credenciales y devuelve un token de sesión y el perfil. |
 | `POST /api/logout` | Invalida la sesión actual. |
 | `GET /api/progreso` | Consulta el progreso del usuario autenticado. |
@@ -109,6 +111,8 @@ El servidor usa bibliotecas incluidas en Python (`http.server`, `sqlite3` y `jso
 | `POST /api/novedades/like` | Registra un me gusta en una publicación. |
 
 Las rutas de progreso, agenda y publicación de novedades requieren el token enviado como `Authorization: Bearer <token>`. El servidor obtiene el usuario de esa sesión, no de un identificador enviado por React. Los tokens viven en memoria hasta ocho horas o hasta que se cierre la sesión o se reinicie el servidor. Por eso, tras reiniciar Python hay que iniciar sesión otra vez; el catálogo universitario, el progreso y la agenda siguen en SQLite.
+
+El registro de docentes está abierto para facilitar la demostración académica. No verifica identidad ni afiliación institucional y no debe usarse como mecanismo de alta docente en un sistema real.
 
 El acceso de desarrollo está limitado al frontend `http://localhost:5173`. El servidor escucha en `127.0.0.1:8000`.
 
