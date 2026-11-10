@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, Heart, Pin, Plus, Check, X, ShieldCheck } from 'lucide-react';
 import type { NovedadPost } from '../types';
+import type { Materia } from '../models/Materia';
 
 interface CarteleraViewProps {
+  materias: Materia[];
   novedades: NovedadPost[];
   onAgregarNovedad: (novedad: Omit<NovedadPost, 'id' | 'likes'>) => void;
   onLikeNovedad: (id: string) => void;
@@ -13,6 +15,7 @@ interface CarteleraViewProps {
 }
 
 export const CarteleraView: React.FC<CarteleraViewProps> = ({
+  materias,
   novedades,
   onAgregarNovedad,
   onLikeNovedad,
@@ -208,13 +211,11 @@ export const CarteleraView: React.FC<CarteleraViewProps> = ({
                     className="select-input"
                   >
                     <option value="General">Aviso General</option>
-                    <option value="Programación I">Programación I</option>
-                    <option value="Programación III">Programación III</option>
-                    <option value="Física General I">Física General I</option>
-                    <option value="Electrónica Digital">Electrónica Digital</option>
-                    <option value="Redes de Área Local y Extendida">Redes de Área Local</option>
-                    <option value="Inteligencia Artificial">Inteligencia Artificial</option>
-                    <option value="Sistemas Operativos I">Sistemas Operativos I</option>
+                    {materias.map(materia => (
+                      <option key={materia.codigoGuarani} value={materia.nombre}>
+                        {materia.nombre}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

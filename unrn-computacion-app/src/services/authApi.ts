@@ -5,6 +5,7 @@ export type RolAutenticado = 'alumno' | 'docente';
 
 export interface UsuarioAutenticado {
   nombre: string;
+  apellido?: string;
   nombre_usuario: string;
   rol: RolAutenticado;
 }
@@ -16,11 +17,39 @@ export interface SesionAutenticada {
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
+export interface DatosRegistro {
+  nombre: string;
+  apellido: string;
+  dni: string;
+  nombre_usuario: string;
+  contrasena: string;
+  rol: RolAutenticado;
+}
+
 export class ErrorApi extends Error {
   /** Crea un error con un mensaje sencillo para mostrar en la interfaz. */
   constructor(message: string) {
     super(message);
     this.name = 'ErrorApi';
+  }
+}
+
+/** Crea una cuenta de alumno o docente en el backend. */
+export async function registrarUsuario(datos: DatosRegistro): Promise<void> {
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${API_BASE_URL}/api/registro`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos),
+    });
+  } catch {
+    throw new ErrorApi('No se pudo conectar con el servidor. Verificá que el backend esté iniciado.');
+  }
+
+  const cuerpo = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) {
+    throw new ErrorApi(cuerpo.error || 'No se pudo crear la cuenta.');
   }
 }
 

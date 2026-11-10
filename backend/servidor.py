@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import sqlite3
 import time
@@ -11,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
 from urllib.parse import urlsplit
 
-from inicializar_db import RUTA_DB, conectar
+from inicializar_db import RUTA_DB, conectar, crear_hash_contrasena, migrar_columnas_usuarios
 
 
 DIRECCION = "127.0.0.1"
@@ -129,7 +130,9 @@ class ManejadorAPI(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         ruta = urlsplit(self.path).path
-        if ruta == "/api/login":
+        if ruta == "/api/registro":
+            self._manejar(self._registrar)
+        elif ruta == "/api/login":
             self._manejar(self._login)
         elif ruta == "/api/logout":
             self._manejar(self._logout)
@@ -185,14 +188,14 @@ class ManejadorAPI(BaseHTTPRequestHandler):
         conexion = conectar(RUTA_DB)
         try:
             fila = conexion.execute(
-                "SELECT id, nombre, nombre_usuario, rol, hash_contrasena "
+                "SELECT id, nombre, apellido, nombre_usuario, rol, hash_contrasena "
                 "FROM usuarios WHERE nombre_usuario = ?",
                 (nombre_usuario.strip(),),
             ).fetchone()
         finally:
             conexion.close()
 
-        if fila is None or not verificar_contrasena(contrasena, fila[4]):
+        if fila is None or not verificar_contrasena(contrasena, fila[5]):
             raise ErrorSolicitud(401, "Nombre de usuario o contrasena incorrectos.")
 
         token = secrets.token_urlsafe(32)
@@ -203,12 +206,62 @@ class ManejadorAPI(BaseHTTPRequestHandler):
             {
                 "token": token,
                 "usuario": {
-                    "nombre": fila[1],
-                    "nombre_usuario": fila[2],
-                    "rol": fila[3],
+                    "nombre": " ".join(parte for parte in (fila[1], fila[2]) if parte),
+                    "apellido": fila[2] or "",
+                    "nombre_usuario": fila[3],
+                    "rol": fila[4],
                 },
             },
         )
+
+    def _registrar(self) -> None:
+        datos = self._json_entrada()
+        nombre = datos.get("nombre")
+        apellido = datos.get("apellido")
+        dni = datos.get("dni")
+        nombre_usuario = datos.get("nombre_usuario")
+        contrasena = datos.get("contrasena")
+        rol = datos.get("rol")
+
+        if not all(isinstance(valor, str) and valor.strip() for valor in
+                   (nombre, apellido, dni, nombre_usuario, contrasena)):
+            raise ErrorSolicitud(400, "Todos los campos son obligatorios.")
+        nombre = nombre.strip()
+        apellido = apellido.strip()
+        dni = dni.strip()
+        nombre_usuario = nombre_usuario.strip()
+        if len(nombre) > 100 or len(apellido) > 100:
+            raise ErrorSolicitud(400, "El nombre y el apellido no pueden superar 100 caracteres.")
+        if not re.fullmatch(r"[0-9]{7,8}", dni):
+            raise ErrorSolicitud(400, "El DNI debe contener 7 u 8 dígitos.")
+        if not re.fullmatch(r"[A-Za-z0-9._-]{3,30}", nombre_usuario):
+            raise ErrorSolicitud(400, "El usuario debe tener entre 3 y 30 caracteres alfanuméricos, punto, guion o guion bajo.")
+        if len(contrasena) < 8 or len(contrasena) > 1024:
+            raise ErrorSolicitud(400, "La contraseña debe tener al menos 8 caracteres.")
+        if not isinstance(rol, str) or rol not in {"alumno", "docente"}:
+            raise ErrorSolicitud(400, "El rol debe ser alumno o docente.")
+
+        conexion = conectar(RUTA_DB)
+        try:
+            if conexion.execute("SELECT 1 FROM usuarios WHERE dni = ?", (dni,)).fetchone():
+                raise ErrorSolicitud(409, "Ya existe una cuenta registrada con ese DNI.")
+            if conexion.execute(
+                "SELECT 1 FROM usuarios WHERE nombre_usuario = ? COLLATE NOCASE",
+                (nombre_usuario,),
+            ).fetchone():
+                raise ErrorSolicitud(409, "Ese nombre de usuario ya está en uso.")
+            conexion.execute(
+                "INSERT INTO usuarios (nombre, apellido, dni, nombre_usuario, hash_contrasena, rol) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (nombre, apellido, dni, nombre_usuario, crear_hash_contrasena(contrasena), rol),
+            )
+            conexion.commit()
+        except sqlite3.IntegrityError as error:
+            raise ErrorSolicitud(409, "El DNI o el nombre de usuario ya está registrado.") from error
+        finally:
+            conexion.close()
+
+        self._responder(201, {"mensaje": "Cuenta creada. Ya podés iniciar sesión."})
 
     def _logout(self) -> None:
         esquema, separador, token = self.headers.get("Authorization", "").partition(" ")
@@ -497,10 +550,10 @@ class ManejadorAPI(BaseHTTPRequestHandler):
         conexion = conectar(RUTA_DB)
         try:
             usuario = conexion.execute(
-                "SELECT id, nombre, rol FROM usuarios WHERE id = ?",
+                "SELECT id, nombre, apellido, rol FROM usuarios WHERE id = ?",
                 (usuario_id,)
             ).fetchone()
-            if not usuario or usuario[2] != "docente":
+            if not usuario or usuario[3] != "docente":
                 raise ErrorSolicitud(403, "Solo los docentes pueden publicar comunicados.")
 
             datos = self._json_entrada()
@@ -513,7 +566,7 @@ class ManejadorAPI(BaseHTTPRequestHandler):
 
             codigo_materia = datos.get("codigoMateria")
             nombre_materia = datos.get("nombreMateria")
-            autor = usuario[1]
+            autor = " ".join(parte for parte in (usuario[1], usuario[2]) if parte)
             rol_autor = "Docente"
             importante = bool(datos.get("importante", True))
 
@@ -591,6 +644,12 @@ class ManejadorAPI(BaseHTTPRequestHandler):
 
 def iniciar_servidor() -> None:
     """Inicia el servidor local y limpia las sesiones al detenerlo."""
+    conexion = conectar(RUTA_DB)
+    try:
+        migrar_columnas_usuarios(conexion)
+        conexion.commit()
+    finally:
+        conexion.close()
     servidor = ThreadingHTTPServer((DIRECCION, PUERTO), ManejadorAPI)
     print(f"Backend local disponible en http://{DIRECCION}:{PUERTO}")
     print(f"Origen frontend permitido: {ORIGEN_FRONTEND}")

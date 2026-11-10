@@ -60,6 +60,21 @@ def crear_hash_contrasena(contrasena: str) -> str:
     return f"pbkdf2_sha256${ITERACIONES_PBKDF2}${sal.hex()}${derivado.hex()}"
 
 
+def migrar_columnas_usuarios(conexion: sqlite3.Connection) -> None:
+    """Agrega los datos de registro sin borrar cuentas ni datos académicos."""
+    columnas = {fila[1] for fila in conexion.execute("PRAGMA table_info(usuarios)")}
+    if not columnas:
+        raise RuntimeError("La tabla usuarios no existe; inicialice la base primero.")
+    if "apellido" not in columnas:
+        conexion.execute("ALTER TABLE usuarios ADD COLUMN apellido TEXT")
+    if "dni" not in columnas:
+        conexion.execute("ALTER TABLE usuarios ADD COLUMN dni TEXT")
+    conexion.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_dni "
+        "ON usuarios(dni) WHERE dni IS NOT NULL"
+    )
+
+
 def verificar_hash_contrasena(contrasena: str, hash_guardado: str) -> bool:
     """Comprueba si una contraseña coincide con un hash PBKDF2 guardado."""
     try:
@@ -90,6 +105,8 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
             CREATE TABLE IF NOT EXISTS usuarios (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+                apellido TEXT,
+                dni TEXT,
                 nombre_usuario TEXT NOT NULL COLLATE NOCASE UNIQUE
                     CHECK (length(trim(nombre_usuario)) > 0),
                 hash_contrasena TEXT NOT NULL,
@@ -97,6 +114,8 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
             )
             """
         )
+
+        migrar_columnas_usuarios(conexion)
 
         conexion.execute(
             """
