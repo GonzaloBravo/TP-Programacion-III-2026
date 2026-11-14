@@ -2670,3 +2670,9 @@
     padding: 24px;
   }
 }
+
+.admin-solicitudes { padding: 16px; }
+.admin-solicitud { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-top: 12px; }
+.admin-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.admin-aula-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.admin-navegacion { padding: 0 16px; }

@@ -1,56 +1,164 @@
 # Backend Python + SQLite
 
-## 1. ¿Qué hace este backend?
+El backend local utiliza Python y SQLite, incluidos en la instalación de Python. La aplicación requiere Python 3.10 o posterior y, para el frontend, Git, Node.js 20.19 o posterior en la rama 20, o 22.12 o posterior, con npm. Los ejemplos siguientes son para PowerShell en Windows; si `py` no está disponible, utilizá `python`.
 
-El backend ofrece una API local para iniciar y cerrar sesión, guardar el progreso académico de cada alumno y conservar su agenda personalizada. El frontend React se comunica con él mediante solicitudes HTTP.
+Comprobá que los programas estén disponibles con `git --version`, `py --version`, `node --version` y `npm.cmd --version`. El backend usa solo módulos de la biblioteca estándar: no requiere `pip install` ni un entorno virtual obligatorio. Podés usar uno si ya trabajás con él.
 
-## 2. Requisitos
+## Obtener el proyecto
 
-- Python 3.10 o superior.
-- SQLite ya viene incluido en Python; no hace falta instalarlo por separado.
-- Para usar la aplicación completa, también se necesita Node.js y npm para ejecutar el frontend.
+Cuando la rama esté publicada y tengas acceso al repositorio:
 
-En Windows, los comandos de esta guía utilizan el lanzador `py`.
+```powershell
+git clone --branch feature/admin-login https://github.com/GonzaloBravo/TP-Programacion-III-2026.git
+cd TP-Programacion-III-2026
+```
 
-## 3. Primera ejecución
+Si ya tenés un clon, revisá y guardá tus cambios locales antes de actualizar o cambiar de rama. Git no incluye `backend/data/unrn_computacion.db`: cada instalación conserva su propia base.
 
-1. Abrí una terminal, por ejemplo PowerShell.
-2. Desde la carpeta raíz del repositorio, entrá a `backend`:
+## Escenario A: instalación desde cero
 
-   ```powershell
-   cd backend
-   ```
-
-3. Creá la base local y las cuentas de demostración:
-
-   ```powershell
-   py inicializar_db.py
-   ```
-
-   Esto crea `data/unrn_computacion.db` si todavía no existe. Las contraseñas se guardan como hashes PBKDF2-HMAC con sal aleatoria. El inicializador conserva el progreso y la agenda que ya existan.
-
-4. Iniciá el servidor:
-
-   ```powershell
-   py servidor.py
-   ```
-
-El backend queda escuchando en `http://127.0.0.1:8000`. Dejá esta terminal abierta mientras usás la aplicación.
-
-## 4. Ejecuciones posteriores
-
-Una vez creada la base local, normalmente solo hace falta entrar a `backend` e iniciar el servidor:
+Desde la raíz del proyecto, comprobá que no exista una base que necesites conservar. Solo para preparar una instalación nueva:
 
 ```powershell
 cd backend
-py servidor.py
+Test-Path .\data\unrn_computacion.db
 ```
 
-No vuelvas a inicializar la base en cada ejecución. El inicializador es repetible y no borra datos, pero se usa principalmente la primera vez o cuando se necesite preparar las cuentas demo.
+Si devuelve `False`, prepará la base y aplicá la migración administrativa:
 
-## 5. Cómo utilizarlo con el frontend
+```powershell
+py .\inicializar_db.py
+py .\migracion_admin.py .\data\unrn_computacion.db
+```
 
-Mantené el backend abierto en una terminal. Abrí una segunda terminal desde la raíz del repositorio y ejecutá:
+Si devuelve `True`, seguí el procedimiento de **base existente**. El inicializador carga el catálogo y cuentas demo; las credenciales demo están en `inicializar_db.py` y son solo para el prototipo. El servidor requiere la migración versión 1, pero no la ejecuta automáticamente.
+
+Después de esos dos comandos, seguí con **Primer administrador** y **Iniciar los servicios** más abajo. El script del administrador permite elegir usuario y contraseña: no hay credenciales predeterminadas para esa cuenta.
+
+## Escenario B: base existente
+
+1. Detené el backend y cualquier otro programa que escriba en la base. No elimines ni reemplaces el archivo original.
+2. Desde la carpeta `backend`, ejecutá este bloque completo en PowerShell. Abre el original en modo de solo lectura, crea un nombre único con reserva exclusiva y usa la API de respaldo de SQLite. Informa la ruta y verifica integridad, claves foráneas y cantidad de filas de cada tabla.
+
+   ```powershell
+   @'
+   import pathlib, sqlite3, uuid
+
+   original = pathlib.Path('data/unrn_computacion.db').resolve()
+   copia = original.parent / ('respaldo-' + uuid.uuid4().hex + '.db')
+   if not original.is_file():
+       raise SystemExit('No existe la base original; no se creó respaldo.')
+   with copia.open('xb'):
+       pass
+   origen = sqlite3.connect(original.as_uri() + '?mode=ro', uri=True)
+   try:
+       origen.execute('BEGIN')
+       destino = sqlite3.connect(copia)
+       try:
+           origen.backup(destino)
+       finally:
+           destino.close()
+       verificacion = sqlite3.connect(copia.as_uri() + '?mode=ro', uri=True)
+       try:
+           integridad = verificacion.execute('PRAGMA integrity_check').fetchall()
+           claves = verificacion.execute('PRAGMA foreign_key_check').fetchall()
+           consulta = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+           tablas = [fila[0] for fila in origen.execute(consulta)]
+           tablas_copia = [fila[0] for fila in verificacion.execute(consulta)]
+           iguales = tablas == tablas_copia
+           for tabla in tablas:
+               nombre = '"' + tabla.replace('"', '""') + '"'
+               antes = origen.execute('SELECT COUNT(*) FROM ' + nombre).fetchone()[0]
+               despues = verificacion.execute('SELECT COUNT(*) FROM ' + nombre).fetchone()[0]
+               print(tabla, antes, despues)
+               iguales = iguales and antes == despues
+           print('Respaldo:', copia, '- bytes:', copia.stat().st_size)
+           print('integrity_check:', integridad, '- foreign_key_check:', claves)
+           if integridad != [('ok',)] or claves or not iguales:
+               raise SystemExit('Verificación fallida: no continuar con la migración.')
+       finally:
+           verificacion.close()
+   finally:
+       origen.close()
+   '@ | py -
+   ```
+
+3. Confirmá que la salida muestre `integrity_check: [('ok',)]`, claves foráneas vacías y los mismos dos conteos por tabla. Si hay un error, detenete y conservá el original; no ejecutes la migración. Guardá la copia en un lugar seguro distinto del original.
+4. Desde `backend`, consultá en modo de solo lectura el estado de la migración y la cantidad de administradores, sin mostrar datos de usuarios ni contraseñas:
+
+   ```powershell
+   @'
+   import pathlib, sqlite3
+
+   ruta = pathlib.Path('data/unrn_computacion.db').resolve()
+   if not ruta.is_file():
+       raise SystemExit('No existe la base esperada; no continuar.')
+   conexion = sqlite3.connect(ruta.as_uri() + '?mode=ro', uri=True)
+   try:
+       tablas = {fila[0] for fila in conexion.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+       if 'usuarios' not in tablas:
+           raise SystemExit('No existe la tabla usuarios; revisar el esquema antes de continuar.')
+       columnas = {fila[1] for fila in conexion.execute('PRAGMA table_info(usuarios)')}
+       if 'rol' not in columnas:
+           raise SystemExit('La tabla usuarios no tiene rol; revisar el esquema antes de continuar.')
+       aplicada = 'migraciones' in tablas and conexion.execute('SELECT 1 FROM migraciones WHERE version = 1').fetchone() is not None
+       cantidad = conexion.execute('SELECT COUNT(*) FROM usuarios WHERE rol = ?', ('administrador',)).fetchone()[0]
+       print('Migración versión 1:', 'aplicada' if aplicada else 'no aplicada')
+       print('Administradores existentes:', cantidad)
+   finally:
+       conexion.close()
+   '@ | py -
+   ```
+
+   Si la consulta falla o el esquema no coincide con lo esperado, detenete y revisá la base con el equipo. No supongas que se puede migrar solo porque la versión figura como no aplicada.
+
+5. Si la salida indica **no aplicada**, revisá que el esquema sea compatible: la migración detiene la operación si `usuarios` tiene columnas no contempladas o existen errores de integridad. Con el respaldo verificado y la base original en `backend/data/unrn_computacion.db`, ejecutá desde `backend`:
+
+   ```powershell
+   py .\migracion_admin.py .\data\unrn_computacion.db
+   ```
+
+   Si indica **aplicada**, no vuelvas a ejecutar el comando. Si la migración falla por un esquema incompatible u otro error, no sigas con el arranque ni intentes repararla automáticamente: conservá el respaldo y revisá el mensaje con el equipo.
+
+La migración está diseñada para conservar los ID, usuarios y relaciones, sin reemplazar materias, aulas, horarios ni agendas; también marca como aprobados a los docentes anteriores. Es transaccional e idempotente, pero no sustituye el respaldo. Después de migrar, verificá la base real en modo de solo lectura desde `backend`:
+
+```powershell
+@'
+import pathlib, sqlite3
+p = pathlib.Path('data/unrn_computacion.db').resolve()
+c = sqlite3.connect(p.as_uri() + '?mode=ro', uri=True)
+try:
+    print('integrity_check:', c.execute('PRAGMA integrity_check').fetchall())
+    print('foreign_key_check:', c.execute('PRAGMA foreign_key_check').fetchall())
+finally:
+    c.close()
+'@ | py -
+```
+
+La integridad debe devolver `[('ok',)]` y las claves foráneas `[]`. Si no es así, detenete y revisá la situación antes de continuar. No repitas la migración como paso de cada inicio.
+
+6. Si la consulta del paso 4 indicó **cero administradores**, continuá con **Primer administrador**. Si ya existe uno, usá esa cuenta. Luego seguí con **Iniciar los servicios**. No ejecutes el inicializador para una base existente como parte de este procedimiento.
+
+## Primer administrador
+
+Después de migrar, desde `backend`:
+
+```powershell
+py .\crear_primer_admin.py
+```
+
+Ingresá nombre, el nombre de usuario que elijas y una contraseña de al menos ocho caracteres; la contraseña no se muestra mientras se escribe y debe confirmarse. No hay una contraseña predeterminada para el administrador. Si ya existe uno, el comando se detiene sin crear otro: usá esa cuenta. No pases contraseñas como argumentos ni las guardes en el repositorio.
+
+## Iniciar los servicios
+
+En una terminal desde la raíz:
+
+```powershell
+cd backend
+py .\servidor.py
+```
+
+En otra terminal desde la raíz, instalá las dependencias del frontend cuando prepares el proyecto por primera vez y ejecutá Vite:
 
 ```powershell
 cd unrn-computacion-app
@@ -58,67 +166,19 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-`npm.cmd ci` instala las dependencias del frontend; normalmente alcanza con ejecutarlo la primera vez. Vite muestra la dirección local, habitualmente `http://localhost:5173`. Abrila en el navegador. El backend debe seguir disponible en `http://127.0.0.1:8000`.
+Abrí http://localhost:5173 e iniciá sesión con el usuario y la contraseña que elegiste. Como administrador, abrí **Administración** para aprobar o rechazar solicitudes docentes y consultar o editar aulas y horarios. El backend escucha en http://127.0.0.1:8000 y permite el origen `http://localhost:5173`. Para detenerlos, usá Ctrl+C en cada terminal. Reiniciar el backend invalida las sesiones en memoria.
 
-Para detener los servicios, presioná **Ctrl+C** en cada terminal: una para React y otra para Python.
+No repitas `npm.cmd ci` en cada arranque ni ejecutes `inicializar_db.py`, la migración o el alta de administrador como pasos rutinarios. El inicializador preserva los registros existentes de la semilla, pero puede agregar datos faltantes, cuentas demo o columnas; no reemplaza un respaldo ni una migración controlada.
 
-## 6. Usuarios de prueba
+## Funcionamiento y pruebas
 
-Estas cuentas se utilizan solo para la demostración académica:
+Los alumnos se registran normalmente. Los docentes nuevos quedan pendientes hasta que un administrador los apruebe; el administrador gestiona solicitudes, aulas y horarios desde la aplicación. Los encuentros se tratan como semanales sin período académico específico: se rechazan nuevos solapamientos físicos y se admite simultaneidad virtual.
 
-| Usuario | Contraseña | Rol |
-|---|---|---|
-| `alumno1` | `alumno1` | alumno |
-| `alumno2` | `alumno2` | alumno |
-| `docente` | `docente` | docente |
+La base contiene usuarios, progreso, agenda, materias, aulas, horarios, calendario y novedades. Las operaciones administrativas requieren un token y el backend comprueba el rol. Para ejecutar las pruebas con bases temporales:
 
-## 7. ¿Qué información se guarda?
+```powershell
+cd backend
+py -m unittest -v test_inicializacion test_admin test_horarios
+```
 
-- **`usuarios`**: guarda el nombre, nombre de usuario, hash de contraseña (PBKDF2) y rol (`alumno` o `docente`). Nunca guarda contraseñas en texto plano.
-- Las cuentas nuevas también guardan apellido y DNI. El DNI es privado y no se devuelve al frontend. Al iniciar, el backend agrega estas columnas si faltan, sin volver a cargar el seed académico ni borrar cuentas existentes.
-- **`progreso_academico`**: guarda el estado de cada materia por alumno (`aprobada`, `regular`, `cursando`, `pendiente`).
-- **`agenda_usuario`**: guarda los identificadores de los encuentros y comisiones seleccionados por cada alumno.
-- **`materias`**: almacena el plan de estudios oficial (38 asignaturas) conforme a la Res. CSDEyVE 044/2019 con código Guaraní, año, cuatrimestre, horas y contenidos mínimos.
-- **`correlativas`**: almacena los requisitos de regularizadas y aprobadas para cursar y rendir cada materia.
-- **`objetivos_materia`**: almacena los objetivos pedagógicos de cada cátedra.
-- **`aulas`**: almacena la distribución de aulas físicas (Anasagasti 1, Anasagasti 2, Tacuarí 150) y virtuales.
-- **`horarios_cursada`**: almacena las comisiones, días, franjas horarias, docentes y auxiliares de cursada.
-- **`eventos_calendario`**: almacena el calendario académico oficial (turnos de exámenes, recesos y feriados).
-- **`novedades_cartelera`**: almacena los avisos y comunicados oficiales emitidos por los docentes con persistencia compartida.
-- **`info_carrera`**: almacena los metadatos institucionales de la carrera de Ingeniería en Computación.
-
-La base vive en `backend/data/unrn_computacion.db` y está excluida del control de versiones. Todo el catálogo, el progreso, la agenda y los comunicados permanecen guardados aunque se cierre el servidor.
-
-## 8. Información técnica
-
-El servidor usa bibliotecas incluidas en Python (`http.server`, `sqlite3` y `json`); no requiere instalar dependencias de backend.
-
-| Método y ruta | Función |
-|---|---|
-| `POST /api/registro` | Crea una cuenta de alumno o docente, con DNI y nombre de usuario únicos. |
-| `POST /api/login` | Verifica las credenciales y devuelve un token de sesión y el perfil. |
-| `POST /api/logout` | Invalida la sesión actual. |
-| `GET /api/progreso` | Consulta el progreso del usuario autenticado. |
-| `PUT /api/progreso` | Guarda el estado de una materia del usuario autenticado. |
-| `GET /api/agenda` | Consulta los encuentros seleccionados por el usuario autenticado. |
-| `PUT /api/agenda` | Guarda la selección de encuentros de ese usuario. |
-| `GET /api/materias` | Consulta el plan de estudios completo, correlatividades y contenidos mínimos. |
-| `GET /api/aulas` | Consulta la nómina de aulas y sedes de Bariloche. |
-| `GET /api/horarios` | Consulta las comisiones, días, horarios y docentes. |
-| `GET /api/calendario` | Consulta las fechas del calendario académico oficial. |
-| `GET /api/novedades` | Consulta las publicaciones de la cartelera virtual. |
-| `POST /api/novedades` | Permite a un docente autenticado publicar un comunicado oficial en SQLite. |
-| `POST /api/novedades/like` | Registra un me gusta en una publicación. |
-
-Las rutas de progreso, agenda y publicación de novedades requieren el token enviado como `Authorization: Bearer <token>`. El servidor obtiene el usuario de esa sesión, no de un identificador enviado por React. Los tokens viven en memoria hasta ocho horas o hasta que se cierre la sesión o se reinicie el servidor. Por eso, tras reiniciar Python hay que iniciar sesión otra vez; el catálogo universitario, el progreso y la agenda siguen en SQLite.
-
-El registro de docentes está abierto para facilitar la demostración académica. No verifica identidad ni afiliación institucional y no debe usarse como mecanismo de alta docente en un sistema real.
-
-El acceso de desarrollo está limitado al frontend `http://localhost:5173`. El servidor escucha en `127.0.0.1:8000`.
-
-## 9. Problemas frecuentes
-
-- **Windows no reconoce `py`:** probá `python` en lugar de `py`. Si tampoco aparece, instalá Python 3.10 o posterior y habilitá la opción para agregarlo al `PATH`.
-- **El frontend indica que no puede conectarse:** comprobá que la terminal del backend siga abierta y que muestre que está escuchando en el puerto 8000. Si se cerró, volvé a iniciar `py servidor.py` desde `backend`.
-- **El puerto 8000 está ocupado:** puede haber otra instancia del backend en ejecución. Detenela con Ctrl+C en su terminal antes de iniciar una nueva.
-- **PowerShell bloquea `npm`:** usá `npm.cmd ci` y `npm.cmd run dev`, como en los comandos anteriores.
+Para comprobar TypeScript y el build, desde `unrn-computacion-app` ejecutá `npm.cmd run build`. Si un puerto está ocupado, identificá el proceso existente antes de iniciar otro servicio.

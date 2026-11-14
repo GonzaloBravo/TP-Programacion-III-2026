@@ -23,12 +23,6 @@ USUARIOS_DEMO = (
     ("Docente Demo", "docente", "docente", "docente"),
 )
 
-# Se usan solo para reconocer las credenciales demo anteriores durante la migracion.
-CONTRASENAS_DEMO_ANTERIORES = {
-    "alumno1": "DemoAlumnoUno2026!",
-    "alumno2": "DemoAlumnaDos2026!",
-    "docente": "DemoDocente2026!",
-}
 NOMBRE_USUARIO_ANTERIOR = "alumna2"
 
 
@@ -262,7 +256,7 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
             """
         )
 
-        # 3. Migracion / Ajuste de usuarios de prueba
+        # 3. Agregar cuentas demo ausentes sin modificar cuentas existentes.
         usuario_anterior = conexion.execute(
             "SELECT id FROM usuarios WHERE nombre_usuario = ?",
             (NOMBRE_USUARIO_ANTERIOR,),
@@ -276,29 +270,19 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
                 "Existen cuentas distintas para 'alumna2' y 'alumno2'; "
                 "se requiere resolver la identidad antes de continuar."
             )
-        if usuario_anterior and not usuario_nuevo:
-            conexion.execute(
-                "UPDATE usuarios SET nombre = ?, nombre_usuario = ? WHERE id = ?",
-                ("Alumno Dos", "alumno2", usuario_anterior[0]),
-            )
-
         for nombre, nombre_usuario, contrasena, rol in USUARIOS_DEMO:
+            if nombre_usuario == "alumno2" and usuario_anterior and not usuario_nuevo:
+                continue
             existente = conexion.execute(
-                "SELECT id, hash_contrasena, rol FROM usuarios WHERE nombre_usuario = ?",
+                "SELECT id, rol FROM usuarios WHERE nombre_usuario = ?",
                 (nombre_usuario,),
             ).fetchone()
             if existente:
-                if existente[2] != rol:
+                if existente[1] != rol:
                     raise RuntimeError(
                         f"El rol de la cuenta demo '{nombre_usuario}' no coincide con el esperado."
                     )
 
-                contrasena_anterior = CONTRASENAS_DEMO_ANTERIORES[nombre_usuario]
-                if verificar_hash_contrasena(contrasena_anterior, existente[1]):
-                    conexion.execute(
-                        "UPDATE usuarios SET hash_contrasena = ? WHERE id = ?",
-                        (crear_hash_contrasena(contrasena), existente[0]),
-                    )
                 continue
 
             conexion.execute(
@@ -319,7 +303,7 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
                 for k, v in seed["info_carrera"].items():
                     val_str = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
                     conexion.execute(
-                        "INSERT OR REPLACE INTO info_carrera (clave, valor) VALUES (?, ?)",
+                        "INSERT INTO info_carrera (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO NOTHING",
                         (k, val_str)
                     )
 
@@ -328,9 +312,9 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
                 cod = m["codigoGuarani"]
                 conexion.execute(
                     """
-                    INSERT OR REPLACE INTO materias 
+                    INSERT INTO materias
                     (codigo_guarani, nro_orden, nombre, anio, cuatrimestre, horas_semanales, horas_totales, es_optativa, contenidos_minimos)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(codigo_guarani) DO NOTHING
                     """,
                     (
                         cod,
@@ -388,8 +372,8 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
             for a in seed.get("aulas", []):
                 conexion.execute(
                     """
-                    INSERT OR REPLACE INTO aulas (id, nombre, sede, tipo, capacidad_aprox)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO aulas (id, nombre, sede, tipo, capacidad_aprox)
+                    VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING
                     """,
                     (a["id"], a["nombre"], a["sede"], a["tipo"], a.get("capacidadAprox"))
                 )
@@ -398,9 +382,9 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
             for h in seed.get("horarios", []):
                 conexion.execute(
                     """
-                    INSERT OR REPLACE INTO horarios_cursada
+                    INSERT INTO horarios_cursada
                     (id, codigo_materia, nombre_materia, comision, tipo_clase, lugar, aula_id, dia_semana, hora_desde, hora_hasta, duracion, docente, email_docente, auxiliar, email_auxiliar, observaciones, anio)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING
                     """,
                     (
                         h["id"],
@@ -427,9 +411,9 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
             for ev in seed.get("calendario", []):
                 conexion.execute(
                     """
-                    INSERT OR REPLACE INTO eventos_calendario
+                    INSERT INTO eventos_calendario
                     (id, fecha_texto, fecha_inicio, fecha_fin, titulo, categoria, descripcion, resolucion)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING
                     """,
                     (
                         ev["id"],

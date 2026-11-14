@@ -17,7 +17,7 @@ La aplicación conserva el frontend React y utiliza un backend local Python con 
 
 - Git.
 - Python 3.10 o posterior. En Windows se puede usar el lanzador `py`.
-- Node.js 20.19 o posterior, o 22.12 o posterior, requerido por la versión de Vite del proyecto.
+- Node.js 20.19 o posterior (rama 20), o 22.12 o posterior, y npm; Vite no admite las versiones intermedias de Node 21 ni 22 anteriores a 22.12.
 - Navegador web moderno.
 
 ### Clonar la rama
@@ -25,24 +25,38 @@ La aplicación conserva el frontend React y utiliza un backend local Python con 
 Cuando la rama esté publicada en GitHub, abrir PowerShell o Git Bash y ejecutar:
 
 ```powershell
-git clone --branch feature/backend-simple https://github.com/GonzaloBravo/TP-Programacion-III-2026.git
+git clone --branch feature/admin-login https://github.com/GonzaloBravo/TP-Programacion-III-2026.git
 cd TP-Programacion-III-2026
-git switch feature/backend-simple
+git switch feature/admin-login
 ```
 
 La rama se mantiene separada de `main`; no hace falta fusionarla para ejecutarla.
 
-### Iniciar el backend
+### Preparar la base y el administrador
 
-En una primera terminal:
+Para una instalación nueva, comprobá primero que no exista una base que necesites conservar en `backend/data/unrn_computacion.db`. Desde la raíz:
 
 ```powershell
 cd backend
 py .\inicializar_db.py
+py .\migracion_admin.py .\data\unrn_computacion.db
+py .\crear_primer_admin.py
+```
+
+El último comando solicita la contraseña de forma interactiva. Si ya existe un administrador, no lo ejecutes de nuevo: ingresá con esa cuenta. Si la base ya existe, **no la reemplaces ni ejecutes el inicializador como rutina**: primero hacé y verificá un respaldo y revisá su esquema antes de migrarla. El procedimiento completo está en [backend/README.md](backend/README.md).
+
+La inicialización agrega datos semilla faltantes sin reemplazar los existentes, pero puede crear tablas, columnas y cuentas demo faltantes. La migración modifica el esquema una sola vez. Ninguno de esos comandos se necesita para cada arranque.
+
+### Iniciar el backend
+
+En una terminal, desde la raíz:
+
+```powershell
+cd backend
 py .\servidor.py
 ```
 
-La inicialización crea o actualiza las cuentas demo sin borrar progreso ni agenda. La base local se guarda en `backend/data/unrn_computacion.db` y no se incluye en Git. El backend queda disponible en `http://127.0.0.1:8000`.
+La base local se guarda en `backend/data/unrn_computacion.db` y no se incluye en Git. El backend queda disponible en `http://127.0.0.1:8000`.
 
 ### Instalar e iniciar el frontend
 
@@ -60,15 +74,7 @@ Abrir **http://localhost:5173**. Para comprobar una compilación de producción:
 npm.cmd run build
 ```
 
-### Cuentas de demostración
-
-| Usuario | Contraseña | Rol |
-|---|---|---|
-| `alumno1` | `alumno1` | alumno |
-| `alumno2` | `alumno2` | alumno |
-| `docente` | `docente` | docente |
-
-Son credenciales simples para la demostración académica; no deben reutilizarse fuera del prototipo.
+Los docentes nuevos deben ser aprobados por un administrador. La inicialización crea cuentas de demostración del prototipo; sus credenciales están definidas en `backend/inicializar_db.py` y no deben reutilizarse fuera de ese entorno.
 
 ### Detener los servicios
 
@@ -81,7 +87,7 @@ En cada terminal, presionar **Ctrl+C**: una vez en la terminal del frontend y ot
 - Si el puerto 8000 está ocupado, detener el otro proceso antes de iniciar el backend. El frontend usa el puerto 5173 por defecto.
 - Abrir el frontend en `http://localhost:5173` para que coincida con el origen permitido por el backend.
 
-La rama solo se podrá clonar con `--branch feature/backend-simple` después de que alguien con acceso la publique en el remoto.
+La rama solo se podrá clonar con `--branch feature/admin-login` después de que alguien con acceso la publique en el remoto.
 
 ---
 

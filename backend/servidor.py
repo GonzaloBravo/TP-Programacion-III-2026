@@ -10,9 +10,9 @@ import sqlite3
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, unquote
 
-from inicializar_db import RUTA_DB, conectar, crear_hash_contrasena, migrar_columnas_usuarios
+from inicializar_db import RUTA_DB, conectar, crear_hash_contrasena
 
 
 DIRECCION = "127.0.0.1"
@@ -23,6 +23,14 @@ MAX_BYTES_JSON = 64 * 1024
 ESTADOS_ACADEMICOS = {"aprobada", "regular", "cursando", "pendiente"}
 sesiones: dict[str, tuple[int, float]] = {}
 sesiones_lock = Lock()
+
+
+def aula_canonica(aula: str) -> str:
+    return 'Tacuari-Aula5' if aula == 'Aula 5' else aula
+
+
+def intervalo_solapado(inicio_a: str, fin_a: str, inicio_b: str, fin_b: str) -> bool:
+    return inicio_a < fin_b and inicio_b < fin_a
 
 
 class ErrorSolicitud(Exception):
@@ -140,6 +148,12 @@ class ManejadorAPI(BaseHTTPRequestHandler):
             self._manejar(self._crear_novedad)
         elif ruta == "/api/novedades/like":
             self._manejar(self._like_novedad)
+        elif ruta == "/api/admin/solicitudes":
+            self._manejar(self._resolver_solicitud)
+        elif ruta == "/api/admin/aulas":
+            self._manejar(lambda: self._guardar_aula())
+        elif ruta == "/api/admin/horarios":
+            self._manejar(lambda: self._guardar_horario())
         else:
             self._responder(404, {"error": "Ruta no encontrada."})
 
@@ -159,6 +173,8 @@ class ManejadorAPI(BaseHTTPRequestHandler):
             self._manejar(self._obtener_calendario)
         elif ruta == "/api/novedades":
             self._manejar(self._obtener_novedades)
+        elif ruta == "/api/admin/solicitudes":
+            self._manejar(self._solicitudes_pendientes)
         else:
             self._responder(404, {"error": "Ruta no encontrada."})
 
@@ -168,6 +184,10 @@ class ManejadorAPI(BaseHTTPRequestHandler):
             self._manejar(self._actualizar_progreso)
         elif ruta == "/api/agenda":
             self._manejar(self._actualizar_agenda)
+        elif ruta.startswith('/api/admin/aulas/'):
+            self._manejar(lambda: self._guardar_aula(unquote(ruta[len('/api/admin/aulas/'):])))
+        elif ruta.startswith('/api/admin/horarios/'):
+            self._manejar(lambda: self._guardar_horario(unquote(ruta[len('/api/admin/horarios/'):])))
         else:
             self._responder(404, {"error": "Ruta no encontrada."})
 
@@ -188,7 +208,7 @@ class ManejadorAPI(BaseHTTPRequestHandler):
         conexion = conectar(RUTA_DB)
         try:
             fila = conexion.execute(
-                "SELECT id, nombre, apellido, nombre_usuario, rol, hash_contrasena "
+                "SELECT id, nombre, apellido, nombre_usuario, rol, hash_contrasena, estado "
                 "FROM usuarios WHERE nombre_usuario = ?",
                 (nombre_usuario.strip(),),
             ).fetchone()
@@ -197,6 +217,8 @@ class ManejadorAPI(BaseHTTPRequestHandler):
 
         if fila is None or not verificar_contrasena(contrasena, fila[5]):
             raise ErrorSolicitud(401, "Nombre de usuario o contrasena incorrectos.")
+        if fila[4] == 'docente' and fila[6] != 'aprobado':
+            raise ErrorSolicitud(403, 'Tu solicitud docente está ' + fila[6] + '.')
 
         token = secrets.token_urlsafe(32)
         with sesiones_lock:
@@ -251,9 +273,9 @@ class ManejadorAPI(BaseHTTPRequestHandler):
             ).fetchone():
                 raise ErrorSolicitud(409, "Ese nombre de usuario ya está en uso.")
             conexion.execute(
-                "INSERT INTO usuarios (nombre, apellido, dni, nombre_usuario, hash_contrasena, rol) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (nombre, apellido, dni, nombre_usuario, crear_hash_contrasena(contrasena), rol),
+                "INSERT INTO usuarios (nombre, apellido, dni, nombre_usuario, hash_contrasena, rol, estado) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (nombre, apellido, dni, nombre_usuario, crear_hash_contrasena(contrasena), rol, 'pendiente' if rol == 'docente' else 'aprobado'),
             )
             conexion.commit()
         except sqlite3.IntegrityError as error:
@@ -261,7 +283,146 @@ class ManejadorAPI(BaseHTTPRequestHandler):
         finally:
             conexion.close()
 
-        self._responder(201, {"mensaje": "Cuenta creada. Ya podés iniciar sesión."})
+        self._responder(201, {"mensaje": "Solicitud pendiente de aprobación." if rol == 'docente' else "Cuenta creada. Ya podés iniciar sesión."})
+
+    def _exigir_administrador(self, conexion) -> None:
+        usuario_id = self._usuario_sesion()
+        fila = conexion.execute('SELECT rol, estado FROM usuarios WHERE id = ?', (usuario_id,)).fetchone()
+        if not fila or fila != ('administrador', 'aprobado'):
+            raise ErrorSolicitud(403, 'Se requiere una cuenta administradora.')
+
+    def _guardar_aula(self, id_existente=None) -> None:
+        conexion = conectar(RUTA_DB)
+        try:
+            conexion.execute('BEGIN IMMEDIATE')
+            self._exigir_administrador(conexion)
+            datos = self._json_entrada()
+            identificador = datos.get('id')
+            nombre, sede, tipo = (datos.get(k) for k in ('nombre', 'sede', 'tipo'))
+            capacidad = datos.get('capacidadAprox')
+            if not isinstance(identificador, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', identificador):
+                raise ErrorSolicitud(400, 'El ID debe contener letras, números, guiones o guion bajo.')
+            if id_existente is not None and identificador != id_existente:
+                raise ErrorSolicitud(400, 'El ID de un aula existente no se puede modificar.')
+            if any(not isinstance(v, str) or not v.strip() or len(v.strip()) > 200 for v in (nombre, sede)):
+                raise ErrorSolicitud(400, 'Nombre y sede son obligatorios (máximo 200 caracteres).')
+            if tipo not in ('aula_teoria', 'laboratorio', 'pecera', 'virtual'):
+                raise ErrorSolicitud(400, 'El tipo de aula no es válido.')
+            if capacidad is not None and (type(capacidad) is not int or not 1 <= capacidad <= 1000000):
+                raise ErrorSolicitud(400, 'La capacidad debe ser un número entero positivo.')
+            if id_existente is None:
+                try:
+                    conexion.execute('INSERT INTO aulas (id, nombre, sede, tipo, capacidad_aprox) VALUES (?, ?, ?, ?, ?)', (identificador, nombre.strip(), sede.strip(), tipo, capacidad))
+                except sqlite3.IntegrityError as error:
+                    raise ErrorSolicitud(409, 'Ya existe un aula con ese ID.') from error
+            else:
+                actual = conexion.execute('SELECT tipo FROM aulas WHERE id = ?', (id_existente,)).fetchone()
+                if not actual:
+                    raise ErrorSolicitud(404, 'No se encontró el aula.')
+                if actual[0] == 'virtual' and tipo != 'virtual':
+                    filas = conexion.execute('SELECT id, aula_id, dia_semana, hora_desde, hora_hasta FROM horarios_cursada').fetchall()
+                    encuentros = [f for f in filas if aula_canonica(f[1]) == aula_canonica(id_existente)]
+                    for i, primero in enumerate(encuentros):
+                        for segundo in encuentros[i + 1:]:
+                            if primero[2] == segundo[2] and intervalo_solapado(primero[3], primero[4], segundo[3], segundo[4]):
+                                raise ErrorSolicitud(409, f'No se puede cambiar a aula física: los encuentros {primero[0]} y {segundo[0]} se superponen ({primero[2]}).')
+                resultado = conexion.execute('UPDATE aulas SET nombre = ?, sede = ?, tipo = ?, capacidad_aprox = ? WHERE id = ?', (nombre.strip(), sede.strip(), tipo, capacidad, id_existente))
+                if resultado.rowcount != 1:
+                    raise ErrorSolicitud(404, 'No se encontró el aula.')
+            conexion.commit()
+            self._responder(201 if id_existente is None else 200, {'mensaje': 'Aula guardada correctamente.'})
+        finally:
+            conexion.close()
+
+    def _guardar_horario(self, id_existente=None) -> None:
+        conexion = conectar(RUTA_DB)
+        try:
+            conexion.execute('BEGIN IMMEDIATE')
+            self._exigir_administrador(conexion)
+            datos = self._json_entrada()
+            identificador = datos.get('id')
+            if not isinstance(identificador, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', identificador):
+                raise ErrorSolicitud(400, 'El ID debe contener letras, números, guiones o guion bajo.')
+            if id_existente is not None and identificador != id_existente:
+                raise ErrorSolicitud(400, 'El ID de un encuentro no se puede modificar.')
+            anterior = conexion.execute('SELECT codigo_materia,nombre_materia,anio,aula_id,lugar,dia_semana,hora_desde,hora_hasta FROM horarios_cursada WHERE id = ?', (identificador,)).fetchone()
+            if id_existente is None and anterior:
+                raise ErrorSolicitud(409, 'Ya existe un encuentro con ese ID.')
+            if id_existente is not None and not anterior:
+                raise ErrorSolicitud(404, 'No se encontró el encuentro.')
+            materia, aula = datos.get('codigoMateria'), datos.get('aula')
+            comision, docente = datos.get('comision'), datos.get('docente')
+            dia, desde, hasta = datos.get('diaSemana'), datos.get('horaDesde'), datos.get('horaHasta')
+            for valor, nombre in ((materia, 'Materia'), (aula, 'Aula'), (comision, 'Comisión'), (docente, 'Docente')):
+                if not isinstance(valor, str) or not valor.strip() or len(valor) > 200:
+                    raise ErrorSolicitud(400, nombre + ' es obligatorio (máximo 200 caracteres).')
+            if dia not in ('lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'):
+                raise ErrorSolicitud(400, 'Día inválido.')
+            if not all(isinstance(h, str) and re.fullmatch(r'(?:[01][0-9]|2[0-3]):[0-5][0-9]', h) for h in (desde, hasta)) or desde >= hasta:
+                raise ErrorSolicitud(400, 'Las horas deben ser válidas y el inicio anterior al fin.')
+            fila_materia = conexion.execute('SELECT nombre, anio FROM materias WHERE codigo_guarani = ?', (materia,)).fetchone()
+            fila_aula = conexion.execute('SELECT sede, tipo FROM aulas WHERE id = ?', (aula,)).fetchone()
+            if not fila_materia and (not anterior or materia != anterior[0]):
+                raise ErrorSolicitud(400, 'Seleccioná una materia válida del catálogo.')
+            if not fila_aula and (not anterior or aula != anterior[3]):
+                raise ErrorSolicitud(400, 'Seleccioná un aula válida del catálogo.')
+            # Los encuentros son semanales; no existe período académico por horario.
+            aula_canon = aula_canonica(aula)
+            tipo = conexion.execute('SELECT tipo FROM aulas WHERE id = ?', (aula_canon,)).fetchone()
+            if not tipo or tipo[0] != 'virtual':
+                filas = conexion.execute('SELECT id,aula_id,dia_semana,hora_desde,hora_hasta FROM horarios_cursada WHERE id <> ?', (identificador,)).fetchall()
+                for otro_id, otra_aula, otro_dia, otro_inicio, otro_fin in filas:
+                    if aula_canonica(otra_aula) != aula_canon or otro_dia != dia:
+                        continue
+                    inicio, fin = max(desde, otro_inicio), min(hasta, otro_fin)
+                    if not intervalo_solapado(desde, hasta, otro_inicio, otro_fin):
+                        continue
+                    # Se conserva un solapamiento histórico solo si su intervalo no crece.
+                    previo = anterior and aula_canonica(anterior[3]) == aula_canon and anterior[5] == dia
+                    if previo:
+                        inicio_previo, fin_previo = max(anterior[6], otro_inicio), min(anterior[7], otro_fin)
+                        previo = inicio_previo < fin_previo and inicio >= inicio_previo and fin <= fin_previo
+                    if not previo:
+                        raise ErrorSolicitud(409, f'Conflicto de aula con el encuentro {otro_id} ({otro_inicio}–{otro_fin}).')
+            minutos = (int(hasta[:2]) * 60 + int(hasta[3:])) - (int(desde[:2]) * 60 + int(desde[3:]))
+            duracion = f'{minutos // 60:02}:{minutos % 60:02}'
+            nombre_materia, anio = (anterior[1], anterior[2]) if anterior and materia == anterior[0] else fila_materia
+            lugar = anterior[4] if anterior and aula == anterior[3] else fila_aula[0]
+            valores = (materia, nombre_materia, comision.strip(), lugar, aula, dia, desde, hasta, duracion, docente.strip(), anio)
+            if anterior:
+                conexion.execute('UPDATE horarios_cursada SET codigo_materia=?,nombre_materia=?,comision=?,lugar=?,aula_id=?,dia_semana=?,hora_desde=?,hora_hasta=?,duracion=?,docente=?,anio=? WHERE id=?', (*valores, identificador))
+            else:
+                conexion.execute('INSERT INTO horarios_cursada (codigo_materia,nombre_materia,comision,lugar,aula_id,dia_semana,hora_desde,hora_hasta,duracion,docente,anio,id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', (*valores, identificador))
+            conexion.commit()
+            self._responder(200 if anterior else 201, {'mensaje': 'Encuentro guardado correctamente.'})
+        finally:
+            conexion.close()
+
+    def _solicitudes_pendientes(self) -> None:
+        conexion = conectar(RUTA_DB)
+        try:
+            self._exigir_administrador(conexion)
+            filas = conexion.execute("SELECT id, nombre, apellido, nombre_usuario FROM usuarios WHERE rol = 'docente' AND estado = 'pendiente' ORDER BY id").fetchall()
+            self._responder(200, {'solicitudes': [{'id': f[0], 'nombre': f[1], 'apellido': f[2] or '', 'nombre_usuario': f[3]} for f in filas]})
+        finally:
+            conexion.close()
+
+    def _resolver_solicitud(self) -> None:
+        conexion = conectar(RUTA_DB)
+        try:
+            conexion.execute('BEGIN IMMEDIATE')
+            self._exigir_administrador(conexion)
+            datos = self._json_entrada()
+            usuario_id, estado = datos.get('id'), datos.get('estado')
+            if type(usuario_id) is not int or estado not in ('aprobado', 'rechazado'):
+                raise ErrorSolicitud(400, 'Solicitud inválida.')
+            resultado = conexion.execute("UPDATE usuarios SET estado = ? WHERE id = ? AND rol = 'docente' AND estado = 'pendiente'", (estado, usuario_id))
+            if resultado.rowcount != 1:
+                raise ErrorSolicitud(409, 'La solicitud ya no está pendiente.')
+            conexion.commit()
+            self._responder(200, {'mensaje': 'Solicitud actualizada.'})
+        finally:
+            conexion.close()
 
     def _logout(self) -> None:
         esquema, separador, token = self.headers.get("Authorization", "").partition(" ")
@@ -550,10 +711,10 @@ class ManejadorAPI(BaseHTTPRequestHandler):
         conexion = conectar(RUTA_DB)
         try:
             usuario = conexion.execute(
-                "SELECT id, nombre, apellido, rol FROM usuarios WHERE id = ?",
+                "SELECT id, nombre, apellido, rol, estado FROM usuarios WHERE id = ?",
                 (usuario_id,)
             ).fetchone()
-            if not usuario or usuario[3] != "docente":
+            if not usuario or usuario[3] != "docente" or usuario[4] != 'aprobado':
                 raise ErrorSolicitud(403, "Solo los docentes pueden publicar comunicados.")
 
             datos = self._json_entrada()
@@ -644,10 +805,12 @@ class ManejadorAPI(BaseHTTPRequestHandler):
 
 def iniciar_servidor() -> None:
     """Inicia el servidor local y limpia las sesiones al detenerlo."""
-    conexion = conectar(RUTA_DB)
+    # La migración es explícita: el arranque nunca modifica el esquema.
+    conexion = sqlite3.connect(RUTA_DB.resolve().as_uri() + '?mode=ro', uri=True)
     try:
-        migrar_columnas_usuarios(conexion)
-        conexion.commit()
+        existe = conexion.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'migraciones'").fetchone()
+        if not existe or not conexion.execute("SELECT 1 FROM migraciones WHERE version = 1").fetchone():
+            raise RuntimeError('Se requiere la migración de administrador versión 1.')
     finally:
         conexion.close()
     servidor = ThreadingHTTPServer((DIRECCION, PUERTO), ManejadorAPI)

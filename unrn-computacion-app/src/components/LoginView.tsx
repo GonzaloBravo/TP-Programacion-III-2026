@@ -1,7 +1,7 @@
 /** Muestra el formulario de acceso y entrega la sesion validada a la app. */
 import { useState, type FormEvent } from 'react';
 import { LogIn, AlertCircle, GraduationCap, UserPlus } from 'lucide-react';
-import { iniciarSesion, registrarUsuario, type ErrorApi, type SesionAutenticada, type RolAutenticado } from '../services/authApi';
+import { iniciarSesion, registrarUsuario, type ErrorApi, type SesionAutenticada } from '../services/authApi';
 
 interface LoginViewProps {
   onLogin: (sesion: SesionAutenticada) => void;
@@ -19,7 +19,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
   const [apellido, setApellido] = useState('');
   const [dni, setDni] = useState('');
   const [confirmarContrasena, setConfirmarContrasena] = useState('');
-  const [rol, setRol] = useState<RolAutenticado>('alumno');
+  const [rol, setRol] = useState<'alumno' | 'docente'>('alumno');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -61,7 +61,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
       setContrasena('');
       setConfirmarContrasena('');
       setModoRegistro(false);
-      setMensaje('Cuenta creada. Ya podés iniciar sesión.');
+      setMensaje(rol === 'docente' ? 'Solicitud enviada. Esperá la aprobación de un administrador.' : 'Cuenta creada. Ya podés iniciar sesión.');
     } catch (cause) {
       setError((cause as ErrorApi).message || 'No se pudo crear la cuenta.');
     } finally {
@@ -98,11 +98,11 @@ export function LoginView({ onLogin }: LoginViewProps) {
             <input id="register-confirm-password" className="text-input" type="password" minLength={8} maxLength={1024} value={confirmarContrasena} onChange={event => setConfirmarContrasena(event.target.value)} autoComplete="new-password" required />
 
             <label htmlFor="register-role">Rol</label>
-            <select id="register-role" className="text-input" value={rol} onChange={event => setRol(event.target.value as RolAutenticado)}>
+            <select id="register-role" className="text-input" value={rol} onChange={event => setRol(event.target.value as 'alumno' | 'docente')}>
               <option value="alumno">Alumno</option>
               <option value="docente">Docente</option>
             </select>
-            <p className="login-description">El registro docente está abierto únicamente para la demostración académica.</p>
+            <p className="login-description">Las cuentas docentes requieren aprobación de un administrador.</p>
 
             {error && <p className="login-error" role="alert"><AlertCircle size={16} /><span>{error}</span></p>}
             <button className="btn-primary login-submit" type="submit" disabled={enviando}>

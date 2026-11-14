@@ -139,10 +139,9 @@ export const calcularOcupacionDeAulas = (
 ): EstadoOcupacionAula[] => {
   return aulas.map(aula => {
     const clasesDelAula = todosLosHorarios.filter(h => {
-      // Si el aula es física, coincide por nombre/id de aula
-      if (aula.tipo === 'virtual') return h.aula.toLowerCase() === 'virtual';
-      return h.aula.toLowerCase().includes(aula.id.toLowerCase()) || 
-             aula.nombre.toLowerCase().includes(h.aula.toLowerCase());
+      // El dato histórico "Aula 5" corresponde al aula de Tacuarí.
+      const aulaHorario = h.aula === 'Aula 5' ? 'Tacuari-Aula5' : h.aula;
+      return aulaHorario === aula.id;
     });
     return aula.evaluarEstado(dia, minutosActuales, clasesDelAula);
   });

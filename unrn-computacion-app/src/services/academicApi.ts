@@ -29,6 +29,20 @@ export async function cargarAulasApi(): Promise<AulaInfo[]> {
   return datos.aulas as AulaInfo[];
 }
 
+/** Guarda un aula; el ID original identifica de forma inmutable una edición. */
+export async function guardarAulaApi(token: string, aula: AulaInfo, idOriginal?: string): Promise<void> {
+  const ruta = idOriginal === undefined ? '/api/admin/aulas' : `/api/admin/aulas/${encodeURIComponent(idOriginal)}`;
+  const respuesta = await fetch(`${API_BASE_URL}${ruta}`, {
+    method: idOriginal === undefined ? 'POST' : 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(aula),
+  });
+  if (!respuesta.ok) {
+    const cuerpo = await respuesta.json().catch(() => ({}));
+    throw new Error(cuerpo.error || 'No se pudo guardar el aula.');
+  }
+}
+
 /** Carga los horarios de cursada y comisiones desde SQLite. */
 export async function cargarHorariosApi(): Promise<HorarioCursadaRaw[]> {
   const respuesta = await fetch(`${API_BASE_URL}/api/horarios`);
@@ -37,6 +51,21 @@ export async function cargarHorariosApi(): Promise<HorarioCursadaRaw[]> {
   }
   const datos = await respuesta.json();
   return datos.horarios as HorarioCursadaRaw[];
+}
+
+export type DatosHorario = Pick<HorarioCursadaRaw, 'id' | 'codigoMateria' | 'comision' | 'aula' | 'diaSemana' | 'horaDesde' | 'horaHasta' | 'docente'>;
+
+export async function guardarHorarioApi(token: string, horario: DatosHorario, idOriginal?: string): Promise<void> {
+  const ruta = idOriginal === undefined ? '/api/admin/horarios' : `/api/admin/horarios/${encodeURIComponent(idOriginal)}`;
+  const respuesta = await fetch(`${API_BASE_URL}${ruta}`, {
+    method: idOriginal === undefined ? 'POST' : 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(horario),
+  });
+  if (!respuesta.ok) {
+    const cuerpo = await respuesta.json().catch(() => ({}));
+    throw new Error(cuerpo.error || 'No se pudo guardar el encuentro.');
+  }
 }
 
 /** Carga el calendario académico oficial desde SQLite. */
@@ -103,4 +132,3 @@ export async function darLikeNovedadApi(id: string): Promise<number> {
   const datos = await respuesta.json();
   return datos.likes as number;
 }
-
