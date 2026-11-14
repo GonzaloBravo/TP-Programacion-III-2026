@@ -2509,6 +2509,7 @@
 
 /* Acceso de usuario y sesión local en memoria */
 .login-viewport {
+  width: 100vw;
   min-height: 100vh;
   display: grid;
   place-items: center;
