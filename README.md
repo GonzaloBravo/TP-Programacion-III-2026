@@ -34,18 +34,14 @@ La rama se mantiene separada de `main`; no hace falta fusionarla para ejecutarla
 
 ### Preparar la base y el administrador
 
-Para una instalación nueva, comprobá primero que no exista una base que necesites conservar en `backend/data/unrn_computacion.db`. Desde la raíz:
+Desde la raíz del proyecto:
 
 ```powershell
 cd backend
-py .\inicializar_db.py
-py .\migracion_admin.py .\data\unrn_computacion.db
-py .\crear_primer_admin.py
+py .\preparar_sistema.py
 ```
 
-El último comando solicita la contraseña de forma interactiva. Si ya existe un administrador, no lo ejecutes de nuevo: ingresá con esa cuenta. Si la base ya existe, **no la reemplaces ni ejecutes el inicializador como rutina**: primero hacé y verificá un respaldo y revisá su esquema antes de migrarla. El procedimiento completo está en [backend/README.md](backend/README.md).
-
-La inicialización agrega datos semilla faltantes sin reemplazar los existentes, pero puede crear tablas, columnas y cuentas demo faltantes. La migración modifica el esquema una sola vez. Ninguno de esos comandos se necesita para cada arranque.
+Si la base existe, detené primero el backend y cualquier otro programa que escriba en ella. El asistente solicita confirmación, crea y verifica un respaldo y aplica la migración solo si hace falta. Si no hay administrador, ofrece crearlo de forma interactiva. Consultá las instrucciones completas en [backend/README.md](backend/README.md). No es necesario repetir la preparación en cada arranque.
 
 ### Iniciar el backend
 

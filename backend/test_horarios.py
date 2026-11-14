@@ -3,6 +3,7 @@ import sqlite3
 import tempfile
 import threading
 import unittest
+from contextlib import closing
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -45,11 +46,11 @@ class HorariosTest(unittest.TestCase):
         r = c.getresponse(); result = (r.status, json.loads(r.read())); c.close(); return result
 
     def test_flujos(self):
-        nuevo = {'id':'nuevo','codigoMateria':'M1','comision':'C1','aula':'A1','diaSemana':'lunes','horaDesde':'09:00','horaHasta':'10:00','docente':'Docente'}
+        nuevo = {'id':'nuevo','codigoMateria':'M1','comision':'C1','aula':'A1','diaSemana':'lunes','horaDesde':'09:00','horaHasta':'10:00','docente':'Docente','tipoClase':'Teoría / Práctica'}
         for token in ('alumno', 'docente'):
             self.assertEqual(self.request('POST','/api/admin/horarios',nuevo,token)[0],403)
             self.assertEqual(self.request('PUT','/api/admin/horarios/viejo',dict(nuevo,id='viejo'),token)[0],403)
-        for invalido in (dict(nuevo,codigoMateria='inexistente'),dict(nuevo,aula='inexistente'),dict(nuevo,comision=' '),dict(nuevo,docente=''),dict(nuevo,diaSemana='domingo'),dict(nuevo,horaDesde='24:00'),dict(nuevo,horaHasta='08:00')):
+        for invalido in (dict(nuevo,codigoMateria='inexistente'),dict(nuevo,aula='inexistente'),dict(nuevo,comision=' '),dict(nuevo,docente=''),dict(nuevo,tipoClase=' '),dict(nuevo,diaSemana='domingo'),dict(nuevo,horaDesde='24:00'),dict(nuevo,horaHasta='08:00')):
             self.assertEqual(self.request('POST','/api/admin/horarios',invalido)[0],400)
         self.assertEqual(self.request('POST','/api/admin/horarios',nuevo)[0],201)
         self.assertEqual(self.request('POST','/api/admin/horarios',nuevo)[0],409)
@@ -58,7 +59,7 @@ class HorariosTest(unittest.TestCase):
         self.assertEqual(self.request('POST','/api/admin/horarios',dict(nuevo,id='alias',aula='Tacuari-Aula5',horaDesde='10:30',horaHasta='11:00'))[0],409)
         for nombre in ('v1','v2'):
             self.assertEqual(self.request('POST','/api/admin/horarios',dict(nuevo,id=nombre,aula='Virtual'))[0],201)
-        anterior = dict(nuevo,id='viejo',codigoMateria='LEG',aula='Aula 5',horaDesde='10:00',horaHasta='12:00')
+        anterior = dict(nuevo,id='viejo',codigoMateria='LEG',aula='Aula 5',horaDesde='10:00',horaHasta='12:00',tipoClase='Teoría')
         self.assertEqual(self.request('PUT','/api/admin/horarios/viejo',dict(anterior,comision='C2'))[0],200)
         self.assertEqual(self.request('PUT','/api/admin/horarios/viejo',dict(anterior,horaHasta='12:30'))[0],409)
         self.assertEqual(self.request('PUT','/api/admin/horarios/viejo',dict(anterior,horaHasta='11:30'))[0],200)
@@ -71,7 +72,7 @@ class HorariosTest(unittest.TestCase):
         c.close()
 
     def test_cambiar_tipo_aula(self):
-        nuevo = {'id':'v1','codigoMateria':'M1','comision':'C1','aula':'Virtual','diaSemana':'lunes','horaDesde':'09:00','horaHasta':'10:00','docente':'Docente'}
+        nuevo = {'id':'v1','codigoMateria':'M1','comision':'C1','aula':'Virtual','diaSemana':'lunes','horaDesde':'09:00','horaHasta':'10:00','docente':'Docente','tipoClase':'Teoría / Práctica'}
         self.assertEqual(self.request('POST', '/api/admin/horarios', nuevo)[0], 201)
         self.assertEqual(self.request('POST', '/api/admin/horarios', dict(nuevo,id='v2',horaDesde='09:30',horaHasta='10:30'))[0], 201)
         cambio = {'id':'Virtual','nombre':'Nombre cambiado','sede':'Otra sede','tipo':'aula_teoria','capacidadAprox':50}
@@ -89,6 +90,22 @@ class HorariosTest(unittest.TestCase):
         c = sqlite3.connect(self.db)
         self.assertEqual(c.execute("SELECT tipo FROM aulas WHERE id='Virtual'").fetchone(), ('virtual',))
         c.close()
+
+    def test_tipo_y_correo_del_docente(self):
+        nuevo = {'id':'nuevo','codigoMateria':'M1','comision':'C1','aula':'A1','diaSemana':'lunes','horaDesde':'09:00','horaHasta':'10:00','docente':'Ana','tipoClase':'Presencial híbrida','emailDocente':'ana@unrn.edu.ar'}
+        self.assertEqual(self.request('POST', '/api/admin/horarios', {k:v for k,v in nuevo.items() if k != 'tipoClase'})[0], 400)
+        self.assertEqual(self.request('POST', '/api/admin/horarios', nuevo)[0], 201)
+        with closing(sqlite3.connect(self.db)) as c:
+            self.assertEqual(c.execute("SELECT tipo_clase,email_docente FROM horarios_cursada WHERE id='nuevo'").fetchone(), ('Presencial híbrida', 'ana@unrn.edu.ar'))
+            self.assertEqual(c.execute("SELECT tipo_clase,email_docente FROM horarios_cursada WHERE id='viejo'").fetchone(), ('Teoría', 'correo'))
+        # Un cliente anterior que no envía correo no debe asociar el correo previo a otro docente.
+        cambio = {k:v for k,v in dict(nuevo,docente='Bruno').items() if k != 'emailDocente'}
+        self.assertEqual(self.request('PUT', '/api/admin/horarios/nuevo', cambio)[0], 200)
+        with closing(sqlite3.connect(self.db)) as c:
+            self.assertEqual(c.execute("SELECT docente,email_docente FROM horarios_cursada WHERE id='nuevo'").fetchone(), ('Bruno', None))
+        self.assertEqual(self.request('PUT', '/api/admin/horarios/nuevo', dict(cambio,emailDocente='bruno@unrn.edu.ar'))[0], 200)
+        with closing(sqlite3.connect(self.db)) as c:
+            self.assertEqual(c.execute("SELECT email_docente FROM horarios_cursada WHERE id='nuevo'").fetchone(), ('bruno@unrn.edu.ar',))
 
 
 if __name__ == '__main__': unittest.main()

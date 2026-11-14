@@ -345,17 +345,27 @@ class ManejadorAPI(BaseHTTPRequestHandler):
                 raise ErrorSolicitud(400, 'El ID debe contener letras, números, guiones o guion bajo.')
             if id_existente is not None and identificador != id_existente:
                 raise ErrorSolicitud(400, 'El ID de un encuentro no se puede modificar.')
-            anterior = conexion.execute('SELECT codigo_materia,nombre_materia,anio,aula_id,lugar,dia_semana,hora_desde,hora_hasta FROM horarios_cursada WHERE id = ?', (identificador,)).fetchone()
+            anterior = conexion.execute('SELECT codigo_materia,nombre_materia,anio,aula_id,lugar,dia_semana,hora_desde,hora_hasta,docente,email_docente,tipo_clase FROM horarios_cursada WHERE id = ?', (identificador,)).fetchone()
             if id_existente is None and anterior:
                 raise ErrorSolicitud(409, 'Ya existe un encuentro con ese ID.')
             if id_existente is not None and not anterior:
                 raise ErrorSolicitud(404, 'No se encontró el encuentro.')
             materia, aula = datos.get('codigoMateria'), datos.get('aula')
             comision, docente = datos.get('comision'), datos.get('docente')
+            tipo_clase = datos.get('tipoClase', anterior[10] if anterior else None)
+            email_docente = datos.get('emailDocente', anterior[9] if anterior and docente == anterior[8] else None)
             dia, desde, hasta = datos.get('diaSemana'), datos.get('horaDesde'), datos.get('horaHasta')
             for valor, nombre in ((materia, 'Materia'), (aula, 'Aula'), (comision, 'Comisión'), (docente, 'Docente')):
                 if not isinstance(valor, str) or not valor.strip() or len(valor) > 200:
                     raise ErrorSolicitud(400, nombre + ' es obligatorio (máximo 200 caracteres).')
+            if tipo_clase is not None and (not isinstance(tipo_clase, str) or len(tipo_clase) > 200):
+                raise ErrorSolicitud(400, 'El tipo de clase no es válido.')
+            if not anterior and (not tipo_clase or not tipo_clase.strip()):
+                raise ErrorSolicitud(400, 'El tipo de clase es obligatorio.')
+            if anterior and tipo_clase == '' and anterior[10] is None:
+                tipo_clase = None
+            if email_docente is not None and (not isinstance(email_docente, str) or len(email_docente) > 254):
+                raise ErrorSolicitud(400, 'El correo del docente no es válido.')
             if dia not in ('lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'):
                 raise ErrorSolicitud(400, 'Día inválido.')
             if not all(isinstance(h, str) and re.fullmatch(r'(?:[01][0-9]|2[0-3]):[0-5][0-9]', h) for h in (desde, hasta)) or desde >= hasta:
@@ -388,11 +398,11 @@ class ManejadorAPI(BaseHTTPRequestHandler):
             duracion = f'{minutos // 60:02}:{minutos % 60:02}'
             nombre_materia, anio = (anterior[1], anterior[2]) if anterior and materia == anterior[0] else fila_materia
             lugar = anterior[4] if anterior and aula == anterior[3] else fila_aula[0]
-            valores = (materia, nombre_materia, comision.strip(), lugar, aula, dia, desde, hasta, duracion, docente.strip(), anio)
+            valores = (materia, nombre_materia, comision.strip(), lugar, aula, dia, desde, hasta, duracion, docente.strip(), anio, tipo_clase, email_docente.strip() or None if email_docente is not None else None)
             if anterior:
-                conexion.execute('UPDATE horarios_cursada SET codigo_materia=?,nombre_materia=?,comision=?,lugar=?,aula_id=?,dia_semana=?,hora_desde=?,hora_hasta=?,duracion=?,docente=?,anio=? WHERE id=?', (*valores, identificador))
+                conexion.execute('UPDATE horarios_cursada SET codigo_materia=?,nombre_materia=?,comision=?,lugar=?,aula_id=?,dia_semana=?,hora_desde=?,hora_hasta=?,duracion=?,docente=?,anio=?,tipo_clase=?,email_docente=? WHERE id=?', (*valores, identificador))
             else:
-                conexion.execute('INSERT INTO horarios_cursada (codigo_materia,nombre_materia,comision,lugar,aula_id,dia_semana,hora_desde,hora_hasta,duracion,docente,anio,id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', (*valores, identificador))
+                conexion.execute('INSERT INTO horarios_cursada (codigo_materia,nombre_materia,comision,lugar,aula_id,dia_semana,hora_desde,hora_hasta,duracion,docente,anio,tipo_clase,email_docente,id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', (*valores, identificador))
             conexion.commit()
             self._responder(200 if anterior else 201, {'mensaje': 'Encuentro guardado correctamente.'})
         finally:

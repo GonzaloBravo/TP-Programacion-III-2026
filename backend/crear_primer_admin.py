@@ -20,11 +20,15 @@ def crear_admin(ruta, nombre, usuario, contrasena):
         con.close()
 
 
-if __name__ == '__main__':
+def crear_admin_interactivo(ruta=RUTA_DB):
     nombre = input('Nombre: ')
     usuario = input('Usuario: ')
     clave = getpass.getpass('Contraseña (mínimo 8 caracteres): ')
     if clave != getpass.getpass('Repetir contraseña: '):
         raise SystemExit('Las contraseñas no coinciden.')
-    crear_admin(RUTA_DB, nombre, usuario, clave)
+    crear_admin(ruta, nombre, usuario, clave)
     print('Administrador creado.')
+
+
+if __name__ == '__main__':
+    crear_admin_interactivo()

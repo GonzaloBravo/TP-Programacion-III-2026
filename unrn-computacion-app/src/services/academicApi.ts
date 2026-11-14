@@ -53,7 +53,7 @@ export async function cargarHorariosApi(): Promise<HorarioCursadaRaw[]> {
   return datos.horarios as HorarioCursadaRaw[];
 }
 
-export type DatosHorario = Pick<HorarioCursadaRaw, 'id' | 'codigoMateria' | 'comision' | 'aula' | 'diaSemana' | 'horaDesde' | 'horaHasta' | 'docente'>;
+export type DatosHorario = Pick<HorarioCursadaRaw, 'id' | 'codigoMateria' | 'comision' | 'aula' | 'diaSemana' | 'horaDesde' | 'horaHasta' | 'docente' | 'tipoClase' | 'emailDocente'>;
 
 export async function guardarHorarioApi(token: string, horario: DatosHorario, idOriginal?: string): Promise<void> {
   const ruta = idOriginal === undefined ? '/api/admin/horarios' : `/api/admin/horarios/${encodeURIComponent(idOriginal)}`;

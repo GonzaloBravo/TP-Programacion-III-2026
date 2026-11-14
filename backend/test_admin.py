@@ -18,7 +18,7 @@ class AdminTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / 'test.db'
         con = sqlite3.connect(self.db)
-        con.executescript('''CREATE TABLE usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, apellido TEXT, dni TEXT, nombre_usuario TEXT NOT NULL COLLATE NOCASE UNIQUE, hash_contrasena TEXT NOT NULL, rol TEXT NOT NULL CHECK(rol IN ('alumno','docente')));
+        con.executescript('''CREATE TABLE usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL CHECK(length(trim(nombre)) > 0), apellido TEXT, dni TEXT, nombre_usuario TEXT NOT NULL COLLATE NOCASE UNIQUE CHECK(length(trim(nombre_usuario)) > 0), hash_contrasena TEXT NOT NULL, rol TEXT NOT NULL CHECK(rol IN ('alumno','docente')));
         CREATE UNIQUE INDEX idx_usuarios_dni ON usuarios(dni) WHERE dni IS NOT NULL;
         CREATE TABLE progreso_academico(usuario_id INTEGER REFERENCES usuarios(id), codigo_materia TEXT);
         CREATE TABLE agenda_usuario(usuario_id INTEGER REFERENCES usuarios(id), encuentro_id TEXT);

@@ -1,8 +1,23 @@
 """Migración explícita de cuentas; nunca se ejecuta al iniciar el servidor."""
 import sqlite3
+import re
 from pathlib import Path
 
 VERSION = 1
+
+
+def esquema_usuarios_conocido(sql):
+    """Acepta únicamente las definiciones publicadas y sus columnas añadidas."""
+    def tokens(texto):
+        partes = re.findall(r"'(?:''|[^'])*'|[A-Za-z_][A-Za-z_0-9]*|[0-9]+|[^\s]", texto)
+        return tuple(p if p.startswith("'") else p.upper() for p in partes)
+
+    inicio = 'CREATE TABLE usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0), '
+    resto = "nombre_usuario TEXT NOT NULL COLLATE NOCASE UNIQUE CHECK (length(trim(nombre_usuario)) > 0), hash_contrasena TEXT NOT NULL, rol TEXT NOT NULL CHECK (rol IN ('alumno', 'docente'))"
+    variantes = [inicio + resto + sufijo + ')' for sufijo in (
+        '', ', apellido TEXT', ', dni TEXT', ', apellido TEXT, dni TEXT', ', dni TEXT, apellido TEXT')]
+    variantes.append(inicio + 'apellido TEXT, dni TEXT, ' + resto + ')')
+    return sql is not None and tokens(sql) in {tokens(v) for v in variantes}
 
 
 def migrar(ruta: str | Path) -> None:
@@ -22,6 +37,9 @@ def migrar(ruta: str | Path) -> None:
             raise RuntimeError('Esquema de usuarios no compatible.')
         if columnas - {'id', 'nombre', 'apellido', 'dni', 'nombre_usuario', 'hash_contrasena', 'rol'}:
             raise RuntimeError('La tabla usuarios contiene columnas no contempladas; no se aplicó la migración.')
+        definicion = con.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'usuarios'").fetchone()
+        if not definicion or not esquema_usuarios_conocido(definicion[0]):
+            raise RuntimeError('El esquema de usuarios no es compatible con las versiones conocidas; no se aplicó la migración. Revisalo con el equipo.')
         objetos = list(con.execute("SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'usuarios' AND type IN ('index', 'trigger') AND sql IS NOT NULL ORDER BY type"))
         secuencia = con.execute("SELECT seq FROM sqlite_sequence WHERE name = 'usuarios'").fetchone()
         apellido = 'apellido' if 'apellido' in columnas else 'NULL'

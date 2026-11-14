@@ -10,8 +10,9 @@ interface Props {
   actualizarHorarios: () => Promise<void>;
 }
 
-const vacio = (): DatosHorario => ({ id: '', codigoMateria: '', comision: '', aula: '', diaSemana: 'lunes', horaDesde: '', horaHasta: '', docente: '' });
+const vacio = (): DatosHorario => ({ id: '', codigoMateria: '', comision: '', aula: '', diaSemana: 'lunes', horaDesde: '', horaHasta: '', docente: '', tipoClase: '', emailDocente: '' });
 const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'] as const;
+const tiposClase = ['Teoría / Práctica', 'Presencial híbrida'];
 
 export function AdminHorarios({ token, materias, aulas, horarios, actualizarHorarios }: Props) {
   const [datos, setDatos] = useState<DatosHorario>(vacio);
@@ -24,7 +25,7 @@ export function AdminHorarios({ token, materias, aulas, horarios, actualizarHora
 
   function editar(horario: HorarioCursadaRaw) {
     setOriginal(horario);
-    setDatos({ id: horario.id, codigoMateria: horario.codigoMateria, comision: horario.comision, aula: horario.aula, diaSemana: horario.diaSemana, horaDesde: horario.horaDesde, horaHasta: horario.horaHasta, docente: horario.docente });
+    setDatos({ id: horario.id, codigoMateria: horario.codigoMateria, comision: horario.comision, aula: horario.aula, diaSemana: horario.diaSemana, horaDesde: horario.horaDesde, horaHasta: horario.horaHasta, docente: horario.docente, tipoClase: horario.tipoClase ?? '', emailDocente: horario.emailDocente ?? '' });
     setError(''); setMensaje('');
   }
   function limpiar() { setOriginal(null); setDatos(vacio()); }
@@ -53,6 +54,12 @@ export function AdminHorarios({ token, materias, aulas, horarios, actualizarHora
       </select>
       <label htmlFor="horario-comision">Comisión</label>
       <input id="horario-comision" className="text-input" value={datos.comision} onChange={e => setDatos({ ...datos, comision: e.target.value })} maxLength={200} required />
+      <label htmlFor="horario-tipo">Tipo de clase</label>
+      <select id="horario-tipo" className="text-input" value={datos.tipoClase} onChange={e => setDatos({ ...datos, tipoClase: e.target.value })} required={!original}>
+        <option value="">Sin especificar</option>
+        {datos.tipoClase && !tiposClase.includes(datos.tipoClase) && <option value={datos.tipoClase}>{datos.tipoClase} — valor histórico</option>}
+        {tiposClase.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+      </select>
       <label htmlFor="horario-aula">Aula</label>
       <select id="horario-aula" className="text-input" value={datos.aula} onChange={e => setDatos({ ...datos, aula: e.target.value })} required>
         <option value="">Seleccionar aula</option>
@@ -68,7 +75,9 @@ export function AdminHorarios({ token, materias, aulas, horarios, actualizarHora
       <label htmlFor="horario-hasta">Hora de finalización</label>
       <input id="horario-hasta" className="text-input" type="time" value={datos.horaHasta} onChange={e => setDatos({ ...datos, horaHasta: e.target.value })} required />
       <label htmlFor="horario-docente">Docente</label>
-      <input id="horario-docente" className="text-input" value={datos.docente} onChange={e => setDatos({ ...datos, docente: e.target.value })} maxLength={200} required />
+      <input id="horario-docente" className="text-input" value={datos.docente} onChange={e => setDatos({ ...datos, docente: e.target.value, emailDocente: '' })} maxLength={200} required />
+      <label htmlFor="horario-email">Correo del docente (opcional)</label>
+      <input id="horario-email" className="text-input" value={datos.emailDocente ?? ''} onChange={e => setDatos({ ...datos, emailDocente: e.target.value })} maxLength={254} />
       {error && <p className="login-error" role="alert">{error}</p>}
       {mensaje && <p role="status">{mensaje}</p>}
       <div className="admin-acciones">
