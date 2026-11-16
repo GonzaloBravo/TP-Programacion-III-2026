@@ -12,6 +12,9 @@ import { CarteleraView } from './views/CarteleraView';
 import { CalendarioView } from './views/CalendarioView';
 import { ChatIAView } from './views/ChatIAView';
 import { LoginView } from './components/LoginView';
+import { AdminSolicitudes } from './components/AdminSolicitudes';
+import { AdminAulas } from './components/AdminAulas';
+import { AdminHorarios } from './components/AdminHorarios';
 import {
   cerrarSesion,
   guardarEstadoMateria,
@@ -53,6 +56,8 @@ import type {
 /** Mantiene el estado general y muestra el acceso o la aplicacion autenticada. */
 export function App() {
   const [sesion, setSesion] = useState<SesionAutenticada | null>(null);
+  const [mostrarAdministracion, setMostrarAdministracion] = useState(false);
+  const [seccionAdministracion, setSeccionAdministracion] = useState<'solicitudes' | 'aulas' | 'horarios'>('solicitudes');
   const [estadoAcademico, setEstadoAcademico] = useState<EstadoAcademicoUsuario>({});
   const [agendaIds, setAgendaIds] = useState<string[]>([]);
   const [progresoCargando, setProgresoCargando] = useState(false);
@@ -390,9 +395,10 @@ export function App() {
           <span>
             {sesion.usuario.nombre}
             <span className="authenticated-user-role">
-              {sesion.usuario.rol === 'docente' ? 'Docente' : 'Alumno'}
+              {sesion.usuario.rol === 'docente' ? 'Docente' : sesion.usuario.rol === 'administrador' ? 'Administrador' : 'Alumno'}
             </span>
           </span>
+          {sesion.usuario.rol === 'administrador' && <button className="session-logout-button" type="button" onClick={() => setMostrarAdministracion(!mostrarAdministracion)}>{mostrarAdministracion ? 'Volver' : 'Administración'}</button>}
           <button className="session-logout-button" type="button" onClick={handleLogout}>
             Cerrar sesión
           </button>
@@ -400,6 +406,14 @@ export function App() {
 
         {/* Contenido Dinámico según la Pestaña Activa */}
         <div className="app-content-scroll">
+          {sesion.usuario.rol === 'administrador' && mostrarAdministracion ? <>
+            <nav className="admin-acciones admin-navegacion" aria-label="Administración">
+              <button className={seccionAdministracion === 'solicitudes' ? 'btn-primary' : 'btn-secondary'} type="button" onClick={() => setSeccionAdministracion('solicitudes')}>Solicitudes docentes</button>
+              <button className={seccionAdministracion === 'aulas' ? 'btn-primary' : 'btn-secondary'} type="button" onClick={() => setSeccionAdministracion('aulas')}>Aulas</button>
+              <button className={seccionAdministracion === 'horarios' ? 'btn-primary' : 'btn-secondary'} type="button" onClick={() => setSeccionAdministracion('horarios')}>Horarios</button>
+            </nav>
+            {seccionAdministracion === 'solicitudes' ? <AdminSolicitudes token={sesion.token} /> : seccionAdministracion === 'aulas' ? <AdminAulas token={sesion.token} aulas={rawAulas} actualizarAulas={async () => setRawAulas(await cargarAulasApi())} /> : <AdminHorarios token={sesion.token} materias={rawMaterias} aulas={rawAulas} horarios={rawHorarios} actualizarHorarios={async () => setRawHorarios(await cargarHorariosApi())} />}
+          </> : <>
           {activeTab === 'inicio' && (
             <InicioView
               onNavigate={setActiveTab}
@@ -460,6 +474,7 @@ export function App() {
           {activeTab === 'chat' && (
             <ChatIAView />
           )}
+          </>}
         </div>
 
         {/* Barra de Navegación Inferior */}

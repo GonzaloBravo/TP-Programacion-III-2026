@@ -10,7 +10,7 @@ interface CarteleraViewProps {
   novedades: NovedadPost[];
   onAgregarNovedad: (novedad: Omit<NovedadPost, 'id' | 'likes'>) => void;
   onLikeNovedad: (id: string) => void;
-  rolUsuario: 'alumno' | 'docente';
+  rolUsuario: 'alumno' | 'docente' | 'administrador';
   nombreUsuario: string;
 }
 

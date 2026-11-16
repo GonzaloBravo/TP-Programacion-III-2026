@@ -1,7 +1,7 @@
 /** Define los tipos de sesion y las llamadas de acceso al servidor Python. */
 import type { EstadoAcademicoUsuario, EstadoMateria } from '../types';
 
-export type RolAutenticado = 'alumno' | 'docente';
+export type RolAutenticado = 'alumno' | 'docente' | 'administrador';
 
 export interface UsuarioAutenticado {
   nombre: string;
@@ -23,7 +23,7 @@ export interface DatosRegistro {
   dni: string;
   nombre_usuario: string;
   contrasena: string;
-  rol: RolAutenticado;
+  rol: 'alumno' | 'docente';
 }
 
 export class ErrorApi extends Error {
@@ -73,7 +73,8 @@ export async function iniciarSesion(
     throw new ErrorApi('El usuario o la contraseña son incorrectos.');
   }
   if (!respuesta.ok) {
-    throw new ErrorApi('No se pudo iniciar sesión. Intentá nuevamente.');
+    const cuerpo = await respuesta.json().catch(() => ({}));
+    throw new ErrorApi(cuerpo.error || 'No se pudo iniciar sesión. Intentá nuevamente.');
   }
 
   let datos: unknown;
@@ -296,6 +297,6 @@ function esSesionAutenticada(datos: unknown): datos is SesionAutenticada {
     !!usuario &&
     typeof usuario.nombre === 'string' &&
     typeof usuario.nombre_usuario === 'string' &&
-    (usuario.rol === 'alumno' || usuario.rol === 'docente')
+    (usuario.rol === 'alumno' || usuario.rol === 'docente' || usuario.rol === 'administrador')
   );
 }

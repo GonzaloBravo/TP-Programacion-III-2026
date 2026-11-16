@@ -1,56 +1,43 @@
 # Backend Python + SQLite
 
-## 1. ¿Qué hace este backend?
+El backend local utiliza Python y SQLite, incluidos en la instalación de Python. La aplicación requiere Python 3.10 o posterior y, para el frontend, Git, Node.js 20.19 o posterior en la rama 20, o 22.12 o posterior, con npm. Los ejemplos siguientes son para PowerShell en Windows; si `py` no está disponible, utilizá `python`.
 
-El backend ofrece una API local para iniciar y cerrar sesión, guardar el progreso académico de cada alumno y conservar su agenda personalizada. El frontend React se comunica con él mediante solicitudes HTTP.
+Comprobá que los programas estén disponibles con `git --version`, `py --version`, `node --version` y `npm.cmd --version`. El backend usa solo módulos de la biblioteca estándar: no requiere `pip install` ni un entorno virtual obligatorio. Podés usar uno si ya trabajás con él.
 
-## 2. Requisitos
+## Obtener el proyecto
 
-- Python 3.10 o superior.
-- SQLite ya viene incluido en Python; no hace falta instalarlo por separado.
-- Para usar la aplicación completa, también se necesita Node.js y npm para ejecutar el frontend.
+Cuando la rama esté publicada y tengas acceso al repositorio:
 
-En Windows, los comandos de esta guía utilizan el lanzador `py`.
+```powershell
+git clone --branch feature/admin-login https://github.com/GonzaloBravo/TP-Programacion-III-2026.git
+cd TP-Programacion-III-2026
+```
 
-## 3. Primera ejecución
+Si ya tenés un clon, revisá y guardá tus cambios locales antes de actualizar o cambiar de rama. Git no incluye `backend/data/unrn_computacion.db`: cada instalación conserva su propia base.
 
-1. Abrí una terminal, por ejemplo PowerShell.
-2. Desde la carpeta raíz del repositorio, entrá a `backend`:
+## Preparación del sistema
 
-   ```powershell
-   cd backend
-   ```
-
-3. Creá la base local y las cuentas de demostración:
-
-   ```powershell
-   py inicializar_db.py
-   ```
-
-   Esto crea `data/unrn_computacion.db` si todavía no existe. Las contraseñas se guardan como hashes PBKDF2-HMAC con sal aleatoria. El inicializador conserva el progreso y la agenda que ya existan.
-
-4. Iniciá el servidor:
-
-   ```powershell
-   py servidor.py
-   ```
-
-El backend queda escuchando en `http://127.0.0.1:8000`. Dejá esta terminal abierta mientras usás la aplicación.
-
-## 4. Ejecuciones posteriores
-
-Una vez creada la base local, normalmente solo hace falta entrar a `backend` e iniciar el servidor:
+Detené el backend con Ctrl+C en su terminal y cerrá cualquier otro programa que escriba en la base. Desde la raíz del proyecto ejecutá:
 
 ```powershell
 cd backend
-py servidor.py
+py .\preparar_sistema.py
 ```
 
-No vuelvas a inicializar la base en cada ejecución. El inicializador es repetible y no borra datos, pero se usa principalmente la primera vez o cuando se necesite preparar las cuentas demo.
+Si no existe la base, el asistente la inicializa y aplica la migración administrativa. Si ya existe, pide confirmar que los procesos estén detenidos, crea un respaldo único en `backend/data/respaldo-<identificador>.db` y verifica su integridad antes de migrar solo si hace falta. Después comprueba la integridad y las claves foráneas. Si no hay administrador, ofrece crearlo; elegí nombre, usuario y contraseña en la terminal. Si ya existe uno, usá esa cuenta. Si rechazás crearlo, la preparación termina sin cuenta administradora.
 
-## 5. Cómo utilizarlo con el frontend
+El asistente informa la ruta del respaldo y se detiene ante errores. No elimina ni restaura archivos automáticamente. Si una instalación nueva falla, puede quedar una base incompleta: revisá el mensaje antes de continuar. No guardes contraseñas en el repositorio. No es necesario volver a ejecutar el asistente en cada arranque.
 
-Mantené el backend abierto en una terminal. Abrí una segunda terminal desde la raíz del repositorio y ejecutá:
+## Iniciar los servicios
+
+En una terminal desde la raíz:
+
+```powershell
+cd backend
+py .\servidor.py
+```
+
+En otra terminal desde la raíz, instalá las dependencias del frontend cuando prepares el proyecto por primera vez y ejecutá Vite:
 
 ```powershell
 cd unrn-computacion-app
@@ -58,67 +45,23 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-`npm.cmd ci` instala las dependencias del frontend; normalmente alcanza con ejecutarlo la primera vez. Vite muestra la dirección local, habitualmente `http://localhost:5173`. Abrila en el navegador. El backend debe seguir disponible en `http://127.0.0.1:8000`.
+Abrí http://localhost:5173 e iniciá sesión con el administrador que creaste durante la preparación. En **Administración** podés gestionar solicitudes, aulas y horarios. El backend escucha en http://127.0.0.1:8000; para detener cada servicio usá Ctrl+C en su terminal. Reiniciar el backend invalida las sesiones.
 
-Para detener los servicios, presioná **Ctrl+C** en cada terminal: una para React y otra para Python.
+## Procedimientos avanzados
 
-## 6. Usuarios de prueba
+Los scripts `inicializar_db.py`, `migracion_admin.py` y `crear_primer_admin.py` permiten realizar pasos manuales, pero normalmente alcanza con el asistente. Ante un error, conservá la base y cualquier respaldo verificado; revisá el mensaje con el equipo antes de restaurar o modificar archivos.
 
-Estas cuentas se utilizan solo para la demostración académica:
+Si una instalación nueva queda incompleta, no inicies el servidor ni elimines la base. Revisá el error con el equipo: una nueva ejecución tratará el archivo existente como una base existente y podría rechazarlo si está incompleto. Si solo quedó pendiente el administrador después de completar la migración, podés volver a ejecutar el asistente para continuar.
 
-| Usuario | Contraseña | Rol |
-|---|---|---|
-| `alumno1` | `alumno1` | alumno |
-| `alumno2` | `alumno2` | alumno |
-| `docente` | `docente` | docente |
+## Funcionamiento y pruebas
 
-## 7. ¿Qué información se guarda?
+Los alumnos se registran normalmente. Los docentes nuevos quedan pendientes hasta que un administrador los apruebe; el administrador gestiona solicitudes, aulas y horarios desde la aplicación. Los encuentros se tratan como semanales sin período académico específico: se rechazan nuevos solapamientos físicos y se admite simultaneidad virtual.
 
-- **`usuarios`**: guarda el nombre, nombre de usuario, hash de contraseña (PBKDF2) y rol (`alumno` o `docente`). Nunca guarda contraseñas en texto plano.
-- Las cuentas nuevas también guardan apellido y DNI. El DNI es privado y no se devuelve al frontend. Al iniciar, el backend agrega estas columnas si faltan, sin volver a cargar el seed académico ni borrar cuentas existentes.
-- **`progreso_academico`**: guarda el estado de cada materia por alumno (`aprobada`, `regular`, `cursando`, `pendiente`).
-- **`agenda_usuario`**: guarda los identificadores de los encuentros y comisiones seleccionados por cada alumno.
-- **`materias`**: almacena el plan de estudios oficial (38 asignaturas) conforme a la Res. CSDEyVE 044/2019 con código Guaraní, año, cuatrimestre, horas y contenidos mínimos.
-- **`correlativas`**: almacena los requisitos de regularizadas y aprobadas para cursar y rendir cada materia.
-- **`objetivos_materia`**: almacena los objetivos pedagógicos de cada cátedra.
-- **`aulas`**: almacena la distribución de aulas físicas (Anasagasti 1, Anasagasti 2, Tacuarí 150) y virtuales.
-- **`horarios_cursada`**: almacena las comisiones, días, franjas horarias, docentes y auxiliares de cursada.
-- **`eventos_calendario`**: almacena el calendario académico oficial (turnos de exámenes, recesos y feriados).
-- **`novedades_cartelera`**: almacena los avisos y comunicados oficiales emitidos por los docentes con persistencia compartida.
-- **`info_carrera`**: almacena los metadatos institucionales de la carrera de Ingeniería en Computación.
+La base contiene usuarios, progreso, agenda, materias, aulas, horarios, calendario y novedades. Las operaciones administrativas requieren un token y el backend comprueba el rol. Para ejecutar las pruebas con bases temporales:
 
-La base vive en `backend/data/unrn_computacion.db` y está excluida del control de versiones. Todo el catálogo, el progreso, la agenda y los comunicados permanecen guardados aunque se cierre el servidor.
+```powershell
+cd backend
+py -m unittest -v test_preparar_sistema test_inicializacion test_admin test_horarios
+```
 
-## 8. Información técnica
-
-El servidor usa bibliotecas incluidas en Python (`http.server`, `sqlite3` y `json`); no requiere instalar dependencias de backend.
-
-| Método y ruta | Función |
-|---|---|
-| `POST /api/registro` | Crea una cuenta de alumno o docente, con DNI y nombre de usuario únicos. |
-| `POST /api/login` | Verifica las credenciales y devuelve un token de sesión y el perfil. |
-| `POST /api/logout` | Invalida la sesión actual. |
-| `GET /api/progreso` | Consulta el progreso del usuario autenticado. |
-| `PUT /api/progreso` | Guarda el estado de una materia del usuario autenticado. |
-| `GET /api/agenda` | Consulta los encuentros seleccionados por el usuario autenticado. |
-| `PUT /api/agenda` | Guarda la selección de encuentros de ese usuario. |
-| `GET /api/materias` | Consulta el plan de estudios completo, correlatividades y contenidos mínimos. |
-| `GET /api/aulas` | Consulta la nómina de aulas y sedes de Bariloche. |
-| `GET /api/horarios` | Consulta las comisiones, días, horarios y docentes. |
-| `GET /api/calendario` | Consulta las fechas del calendario académico oficial. |
-| `GET /api/novedades` | Consulta las publicaciones de la cartelera virtual. |
-| `POST /api/novedades` | Permite a un docente autenticado publicar un comunicado oficial en SQLite. |
-| `POST /api/novedades/like` | Registra un me gusta en una publicación. |
-
-Las rutas de progreso, agenda y publicación de novedades requieren el token enviado como `Authorization: Bearer <token>`. El servidor obtiene el usuario de esa sesión, no de un identificador enviado por React. Los tokens viven en memoria hasta ocho horas o hasta que se cierre la sesión o se reinicie el servidor. Por eso, tras reiniciar Python hay que iniciar sesión otra vez; el catálogo universitario, el progreso y la agenda siguen en SQLite.
-
-El registro de docentes está abierto para facilitar la demostración académica. No verifica identidad ni afiliación institucional y no debe usarse como mecanismo de alta docente en un sistema real.
-
-El acceso de desarrollo está limitado al frontend `http://localhost:5173`. El servidor escucha en `127.0.0.1:8000`.
-
-## 9. Problemas frecuentes
-
-- **Windows no reconoce `py`:** probá `python` en lugar de `py`. Si tampoco aparece, instalá Python 3.10 o posterior y habilitá la opción para agregarlo al `PATH`.
-- **El frontend indica que no puede conectarse:** comprobá que la terminal del backend siga abierta y que muestre que está escuchando en el puerto 8000. Si se cerró, volvé a iniciar `py servidor.py` desde `backend`.
-- **El puerto 8000 está ocupado:** puede haber otra instancia del backend en ejecución. Detenela con Ctrl+C en su terminal antes de iniciar una nueva.
-- **PowerShell bloquea `npm`:** usá `npm.cmd ci` y `npm.cmd run dev`, como en los comandos anteriores.
+Para comprobar TypeScript y el build, desde `unrn-computacion-app` ejecutá `npm.cmd run build`. Si un puerto está ocupado, identificá el proceso existente antes de iniciar otro servicio.
