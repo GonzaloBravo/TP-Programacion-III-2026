@@ -3,6 +3,22 @@ import React, { useState, useRef, useEffect } from 'react';
 import { BotMessageSquare, Send, Sparkles, Key, Check, Info, User } from 'lucide-react';
 import { aiAssistant, type ChatMessage } from '../services/aiKnowledgeEngine';
 
+/** Convierte texto delimitado por * o ** en elementos <strong> en negrita, quitando los asteriscos. */
+const renderizarTextoConFormato = (texto: string): React.ReactNode => {
+  const regex = /(\*{1,3}[^*]+?\*{1,3})/g;
+  const partes = texto.split(regex);
+
+  return partes.map((parte, idx) => {
+    if (parte.startsWith('*') && parte.endsWith('*') && parte.length > 2) {
+      const contenido = parte.replace(/^\*+|\*+$/g, '');
+      if (contenido) {
+        return <strong key={idx}>{contenido}</strong>;
+      }
+    }
+    return parte;
+  });
+};
+
 export const ChatIAView: React.FC = () => {
   const [mensajes, setMensajes] = useState<ChatMessage[]>([
     {
@@ -148,17 +164,17 @@ Estoy capacitado con toda la documentación oficial de la carrera:
               <div className={`message-bubble ${esUsuario ? 'bubble-user' : 'bubble-ia'}`}>
                 <div className="message-content">
                   {msg.texto.split('\n').map((line, i) => {
-                    // Formato markdown simple y elegante
+                    // Formato markdown con soporte de texto en negrita (* o **)
                     if (line.startsWith('### ')) {
-                      return <h4 key={i} className="msg-h4">{line.replace('### ', '')}</h4>;
+                      return <h4 key={i} className="msg-h4">{renderizarTextoConFormato(line.replace('### ', ''))}</h4>;
                     }
-                    if (line.startsWith('• ') || line.startsWith('- ')) {
-                      return <p key={i} className="msg-bullet">{line}</p>;
+                    if (line.startsWith('• ') || line.startsWith('- ') || (line.startsWith('* ') && !line.endsWith('*'))) {
+                      return <p key={i} className="msg-bullet">{renderizarTextoConFormato(line)}</p>;
                     }
                     if (line.trim() === '') {
                       return <div key={i} className="msg-spacer" />;
                     }
-                    return <p key={i}>{line}</p>;
+                    return <p key={i}>{renderizarTextoConFormato(line)}</p>;
                   })}
                 </div>
 

@@ -2234,6 +2234,10 @@
   height: 6px;
 }
 
+.message-content strong {
+  font-weight: 700;
+}
+
 .message-meta-footer {
   display: flex;
   justify-content: space-between;
