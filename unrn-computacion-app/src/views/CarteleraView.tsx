@@ -95,7 +95,7 @@ export const CarteleraView: React.FC<CarteleraViewProps> = ({
         </div>
       ) : (
         <div className="student-cartelera-notice">
-          <span>📌 La publicación de comunicados oficiales está reservada al cuerpo docente.</span>
+          <span>📌 Mostrando comunicados oficiales de las materias que tenés seleccionadas en tu Agenda / Cursada.</span>
         </div>
       )}
 
@@ -116,14 +116,14 @@ export const CarteleraView: React.FC<CarteleraViewProps> = ({
       <div className="novedades-feed">
         {novedadesFiltradas.length === 0 ? (
           <div className="empty-cartelera-notice" style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.4rem' }}>No hay avisos publicados en la cartelera en este momento.</p>
+            <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.4rem' }}>No hay avisos publicados para tus materias en este momento.</p>
             {esDocente ? (
               <p style={{ fontSize: '0.85rem' }}>
                 Como docente, podés presionar <strong>"Publicar Aviso"</strong> para redactar un comunicado para los estudiantes.
               </p>
             ) : (
               <p style={{ fontSize: '0.85rem' }}>
-                Los avisos y comunicados oficiales aparecerán aquí cuando los docentes de las cátedras realicen una publicación.
+                Aparecerán aquí las novedades cuando los docentes publiquen avisos sobre las materias en las que te inscribiste en tu <strong>Agenda</strong> o estés cursando.
               </p>
             )}
           </div>

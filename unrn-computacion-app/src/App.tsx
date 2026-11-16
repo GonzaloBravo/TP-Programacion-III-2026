@@ -321,6 +321,51 @@ export function App() {
     );
   }, [todosLosHorarios, horaInfo]);
 
+  // 11. Filtrado de novedades para la cartelera según el rol del usuario
+  // Alumnos: solo avisos generales/institucionales o de materias en las que están inscriptos (agenda o cursando)
+  // Docentes y Administradores: ven todos los avisos
+  const novedadesParaUsuario = useMemo(() => {
+    if (!sesion || sesion.usuario.rol !== 'alumno') {
+      return novedades;
+    }
+
+    const normalizar = (txt: string) =>
+      txt.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    const nombresAgenda = new Set(
+      horariosSeleccionados.map(h => normalizar(h.nombreMateria))
+    );
+    const codigosAgenda = new Set(
+      horariosSeleccionados.map(h => normalizar(h.codigoMateria))
+    );
+
+    const codigosCursando = new Set(
+      Object.entries(estadoAcademico)
+        .filter(([_, estado]) => estado === 'cursando')
+        .map(([cod]) => normalizar(cod))
+    );
+
+    const nombresCursando = new Set(
+      materias
+        .filter(m => codigosCursando.has(normalizar(m.codigoGuarani)))
+        .map(m => normalizar(m.nombre))
+    );
+
+    return novedades.filter(nov => {
+      if (!nov.nombreMateria || nov.nombreMateria === 'General' || nov.nombreMateria === 'Institucional') {
+        return true;
+      }
+
+      const matNombre = normalizar(nov.nombreMateria);
+      const matCodigo = nov.codigoMateria ? normalizar(nov.codigoMateria) : '';
+
+      const coincideAgenda = nombresAgenda.has(matNombre) || (matCodigo !== '' && codigosAgenda.has(matCodigo));
+      const coincideCursando = nombresCursando.has(matNombre) || (matCodigo !== '' && codigosCursando.has(matCodigo));
+
+      return coincideAgenda || coincideCursando;
+    });
+  }, [novedades, sesion, horariosSeleccionados, estadoAcademico, materias]);
+
   if (cargandoCatalogo) {
     return (
       <main className="login-viewport">
@@ -423,7 +468,7 @@ export function App() {
               estadoAcademico={estadoAcademico}
               onOpenSimulador={() => setSimuladorAbierto(true)}
               eventos={eventosCalendario}
-              novedades={novedades}
+              novedades={novedadesParaUsuario}
             />
           )}
 
@@ -459,7 +504,7 @@ export function App() {
           {activeTab === 'cartelera' && (
             <CarteleraView
               materias={materias}
-              novedades={novedades}
+              novedades={novedadesParaUsuario}
               onAgregarNovedad={handleAgregarNovedad}
               onLikeNovedad={handleLikeNovedad}
               rolUsuario={sesion.usuario.rol}
@@ -481,7 +526,7 @@ export function App() {
         <BottomNav
           activeTab={activeTab}
           onSelectTab={setActiveTab}
-          unreadCount={novedades.filter(n => n.importante).length}
+          unreadCount={novedadesParaUsuario.filter(n => n.importante).length}
         />
 
         {/* Modal de Simulación Temporal */}
