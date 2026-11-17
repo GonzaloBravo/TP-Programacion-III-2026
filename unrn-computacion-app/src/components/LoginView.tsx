@@ -70,8 +70,8 @@ export function LoginView({ onLogin }: LoginViewProps) {
   };
 
   return (
-    <main className={`login-viewport ${modoRegistro ? 'registration-viewport' : ''}`}>
-      <section className="login-card glass-panel" aria-labelledby="login-title">
+    <div className={`login-viewport ${modoRegistro ? 'registration-viewport' : ''}`}>
+      <section className="login-card" aria-labelledby="login-title">
         <div className="login-icon"><GraduationCap size={30} /></div>
         <p className="login-kicker">UNRN · Ingeniería en Computación</p>
         <h1 id="login-title">{modoRegistro ? 'Crear cuenta' : 'Ingresar'}</h1>
@@ -152,6 +152,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
           {modoRegistro ? 'Ya tengo cuenta: iniciar sesión' : '¿No tenés cuenta? Registrarse'}
         </button>
       </section>
-    </main>
+    </div>
   );
 }

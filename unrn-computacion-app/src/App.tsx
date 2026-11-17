@@ -368,50 +368,106 @@ export function App() {
 
   if (cargandoCatalogo) {
     return (
-      <main className="login-viewport">
-        <section className="login-card glass-panel" role="status">
-          <p>Conectando con base de datos SQLite...</p>
-        </section>
-      </main>
+      <div className={`app-viewport ${isDeviceFrame ? '' : 'full-screen'}`}>
+        <main className="device-wrapper glass-panel">
+          {isDeviceFrame && (
+            <div className="device-notch">
+              <div className="device-speaker" />
+              <div className="device-camera" />
+            </div>
+          )}
+          <div className="login-viewport">
+            <section className="login-card" role="status">
+              <p>Conectando con base de datos SQLite...</p>
+            </section>
+          </div>
+        </main>
+      </div>
     );
   }
 
   if (errorCatalogo) {
     return (
-      <main className="login-viewport">
-        <section className="login-card glass-panel">
-          <p className="login-error" role="alert">{errorCatalogo}</p>
-          <button className="btn-primary login-submit" type="button" onClick={handleReintentarCatalogo}>
-            Reintentar conexión
-          </button>
-        </section>
-      </main>
+      <div className={`app-viewport ${isDeviceFrame ? '' : 'full-screen'}`}>
+        <main className="device-wrapper glass-panel">
+          {isDeviceFrame && (
+            <div className="device-notch">
+              <div className="device-speaker" />
+              <div className="device-camera" />
+            </div>
+          )}
+          <div className="login-viewport">
+            <section className="login-card">
+              <p className="login-error" role="alert">{errorCatalogo}</p>
+              <button className="btn-primary login-submit" type="button" onClick={handleReintentarCatalogo}>
+                Reintentar conexión
+              </button>
+            </section>
+          </div>
+        </main>
+      </div>
     );
   }
 
-  if (!sesion) return <LoginView onLogin={handleLogin} />;
+  if (!sesion) {
+    return (
+      <div className={`app-viewport ${isDeviceFrame ? '' : 'full-screen'}`}>
+        <main className="device-wrapper glass-panel">
+          {isDeviceFrame && (
+            <div className="device-notch">
+              <div className="device-speaker" />
+              <div className="device-camera" />
+            </div>
+          )}
+          <LoginView onLogin={handleLogin} />
+        </main>
+      </div>
+    );
+  }
 
   if (progresoCargando) {
     return (
-      <main className="login-viewport">
-        <section className="login-card glass-panel" role="status">Cargando tus datos...</section>
-      </main>
+      <div className={`app-viewport ${isDeviceFrame ? '' : 'full-screen'}`}>
+        <main className="device-wrapper glass-panel">
+          {isDeviceFrame && (
+            <div className="device-notch">
+              <div className="device-speaker" />
+              <div className="device-camera" />
+            </div>
+          )}
+          <div className="login-viewport">
+            <section className="login-card" role="status">
+              <p>Cargando tus datos...</p>
+            </section>
+          </div>
+        </main>
+      </div>
     );
   }
 
   if (errorCargaProgreso) {
     return (
-      <main className="login-viewport">
-        <section className="login-card glass-panel">
-          <p className="login-error" role="alert">{errorCargaProgreso}</p>
-          <button className="btn-primary login-submit" type="button" onClick={handleReintentarCargaProgreso}>
-            Reintentar
-          </button>
-          <button className="session-logout-button" type="button" onClick={handleLogout}>
-            Cerrar sesion
-          </button>
-        </section>
-      </main>
+      <div className={`app-viewport ${isDeviceFrame ? '' : 'full-screen'}`}>
+        <main className="device-wrapper glass-panel">
+          {isDeviceFrame && (
+            <div className="device-notch">
+              <div className="device-speaker" />
+              <div className="device-camera" />
+            </div>
+          )}
+          <div className="login-viewport">
+            <section className="login-card">
+              <p className="login-error" role="alert">{errorCargaProgreso}</p>
+              <button className="btn-primary login-submit" type="button" onClick={handleReintentarCargaProgreso}>
+                Reintentar
+              </button>
+              <button className="session-logout-button" type="button" onClick={handleLogout}>
+                Cerrar sesión
+              </button>
+            </section>
+          </div>
+        </main>
+      </div>
     );
   }
 
