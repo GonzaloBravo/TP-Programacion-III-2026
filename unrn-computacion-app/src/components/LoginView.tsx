@@ -1,6 +1,6 @@
 /** Muestra el formulario de acceso y entrega la sesion validada a la app. */
 import { useState, type FormEvent } from 'react';
-import { LogIn, AlertCircle, GraduationCap, UserPlus } from 'lucide-react';
+import { LogIn, AlertCircle, UserPlus } from 'lucide-react';
 import { iniciarSesion, registrarUsuario, type ErrorApi, type SesionAutenticada } from '../services/authApi';
 
 interface LoginViewProps {
@@ -72,7 +72,9 @@ export function LoginView({ onLogin }: LoginViewProps) {
   return (
     <div className={`login-viewport ${modoRegistro ? 'registration-viewport' : ''}`}>
       <section className="login-card" aria-labelledby="login-title">
-        <div className="login-icon"><GraduationCap size={30} /></div>
+        <div className="login-logo-wrap">
+          <img src="/logo-unrn-oficial.jpg" alt="Logo Oficial UNRN" className="login-logo-img" />
+        </div>
         <p className="login-kicker">UNRN · Ingeniería en Computación</p>
         <h1 id="login-title">{modoRegistro ? 'Crear cuenta' : 'Ingresar'}</h1>
         <p className="login-description">{modoRegistro ? 'Completá tus datos para crear una cuenta.' : 'Ingresá con tu cuenta o registrate para comenzar'}</p>
