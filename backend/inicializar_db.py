@@ -1,4 +1,4 @@
-"""Prepara la base SQLite, crea las tablas maestras y las cuentas de demostracion."""
+"""Prepara la base SQLite y carga los datos maestros del plan de estudios."""
 
 import hashlib
 import json
@@ -15,15 +15,10 @@ ITERACIONES_PBKDF2 = 310_000
 LONGITUD_SAL = 16
 LONGITUD_HASH = 32
 
-# Credenciales unicamente para el prototipo local de Programacion III.
-# La base guarda el resultado PBKDF2-HMAC, nunca estas contrasenas en texto plano.
-USUARIOS_DEMO = (
-    ("Alumno Uno", "alumno1", "alumno1", "alumno"),
-    ("Alumno Dos", "alumno2", "alumno2", "alumno"),
-    ("Docente Demo", "docente", "docente", "docente"),
-)
-
-NOMBRE_USUARIO_ANTERIOR = "alumna2"
+# No se generan usuarios de demostración por defecto.
+# Los usuarios se registran a través del formulario de la aplicación
+# y el primer administrador se crea de forma interactiva con preparar_sistema.py.
+USUARIOS_DEMO = ()
 
 
 def conectar(ruta_db: str | Path = RUTA_DB) -> sqlite3.Connection:
@@ -256,42 +251,9 @@ def inicializar_db(ruta_db: str | Path = RUTA_DB) -> None:
             """
         )
 
-        # 3. Agregar cuentas demo ausentes sin modificar cuentas existentes.
-        usuario_anterior = conexion.execute(
-            "SELECT id FROM usuarios WHERE nombre_usuario = ?",
-            (NOMBRE_USUARIO_ANTERIOR,),
-        ).fetchone()
-        usuario_nuevo = conexion.execute(
-            "SELECT id FROM usuarios WHERE nombre_usuario = ?",
-            ("alumno2",),
-        ).fetchone()
-        if usuario_anterior and usuario_nuevo and usuario_anterior[0] != usuario_nuevo[0]:
-            raise RuntimeError(
-                "Existen cuentas distintas para 'alumna2' y 'alumno2'; "
-                "se requiere resolver la identidad antes de continuar."
-            )
-        for nombre, nombre_usuario, contrasena, rol in USUARIOS_DEMO:
-            if nombre_usuario == "alumno2" and usuario_anterior and not usuario_nuevo:
-                continue
-            existente = conexion.execute(
-                "SELECT id, rol FROM usuarios WHERE nombre_usuario = ?",
-                (nombre_usuario,),
-            ).fetchone()
-            if existente:
-                if existente[1] != rol:
-                    raise RuntimeError(
-                        f"El rol de la cuenta demo '{nombre_usuario}' no coincide con el esperado."
-                    )
-
-                continue
-
-            conexion.execute(
-                """
-                INSERT INTO usuarios (nombre, nombre_usuario, hash_contrasena, rol)
-                VALUES (?, ?, ?, ?)
-                """,
-                (nombre, nombre_usuario, crear_hash_contrasena(contrasena), rol),
-            )
+        # 3. No se crean usuarios de prueba automáticamente.
+        # Los alumnos y docentes se registran a través del formulario de la aplicación
+        # y el administrador inicial se configura mediante preparar_sistema.py.
 
         # 4. Poblar datos maestros desde seed_data.json si esta disponible
         if RUTA_SEED.exists():

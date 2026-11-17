@@ -1,4 +1,4 @@
-﻿# App Móvil UNRN — Ingeniería en Computación
+# App Móvil UNRN — Ingeniería en Computación
 > **Trabajo Práctico para la Asignatura: Programación III (Ciclo Lectivo 2026)**  
 > **Universidad Nacional de Río Negro (UNRN) — Sede Andina, San Carlos de Bariloche**  
 > *Escuela de Producción, Tecnología y Medio Ambiente*
@@ -70,7 +70,7 @@ Abrir **http://localhost:5173**. Para comprobar una compilación de producción:
 npm.cmd run build
 ```
 
-Los docentes nuevos deben ser aprobados por un administrador. La inicialización crea cuentas de demostración del prototipo; sus credenciales están definidas en `backend/inicializar_db.py` y no deben reutilizarse fuera de ese entorno.
+Los alumnos y docentes se registran directamente mediante el formulario de registro del sistema. Los docentes nuevos deben ser aprobados por un administrador desde el panel de administración. El primer administrador se crea de forma interactiva durante la preparación inicial con `preparar_sistema.py`.
 
 ### Detener los servicios
 

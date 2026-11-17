@@ -18,6 +18,8 @@ class InicializacionTest(unittest.TestCase):
             aula = con.execute('SELECT id FROM aulas ORDER BY id LIMIT 1').fetchone()[0]
             horario = con.execute('SELECT id FROM horarios_cursada ORDER BY id LIMIT 1').fetchone()[0]
             materia = con.execute('SELECT codigo_guarani FROM materias ORDER BY codigo_guarani LIMIT 1').fetchone()[0]
+            con.execute("INSERT INTO usuarios (nombre, apellido, dni, nombre_usuario, hash_contrasena, rol, estado) VALUES ('Usuario Test', 'Apellido', '12345678', 'usertest', 'hash', 'alumno', 'aprobado')")
+            con.commit()
             usuario = con.execute('SELECT id FROM usuarios ORDER BY id LIMIT 1').fetchone()[0]
             con.execute('UPDATE aulas SET nombre = ? WHERE id = ?', ('Aula administrada', aula))
             con.execute('UPDATE horarios_cursada SET docente = ? WHERE id = ?', ('Docente editado', horario))
@@ -43,20 +45,14 @@ class InicializacionTest(unittest.TestCase):
             finally:
                 con.close()
 
-    def test_cuenta_demo_anterior_no_se_modifica(self):
+    def test_no_crea_usuarios_demo_automaticos(self):
         with tempfile.TemporaryDirectory() as directorio:
             ruta = Path(directorio) / 'temporal.db'
             inicializar_db(ruta)
             con = sqlite3.connect(ruta)
-            con.execute("UPDATE usuarios SET nombre_usuario='alumna2', nombre='Nombre conservado' WHERE nombre_usuario='alumno2'")
-            con.commit()
-            antes = con.execute("SELECT * FROM usuarios WHERE nombre_usuario='alumna2'").fetchone()
-            con.close()
-            inicializar_db(ruta)
-            con = sqlite3.connect(ruta)
             try:
-                self.assertEqual(con.execute("SELECT * FROM usuarios WHERE nombre_usuario='alumna2'").fetchone(), antes)
-                self.assertIsNone(con.execute("SELECT id FROM usuarios WHERE nombre_usuario='alumno2'").fetchone())
+                total_usuarios = con.execute("SELECT count(*) FROM usuarios").fetchone()[0]
+                self.assertEqual(total_usuarios, 0)
             finally:
                 con.close()
 
